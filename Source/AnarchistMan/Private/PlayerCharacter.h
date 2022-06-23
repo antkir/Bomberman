@@ -24,13 +24,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-protected:
-
-	UPROPERTY(VisibleAnywhere, Category = "Components")
-	UCameraComponent* CameraComponent;
-
-	UPROPERTY(EditAnywhere, Category = "Parameters")
-	TSubclassOf<ABomb> BombClass;
+	void BlowUp();
 
 protected:
 
@@ -46,7 +40,18 @@ private:
 	void MoveRight(float Val);
 
 	/** Bomb placing */
-	UFUNCTION(Reliable, Server)
+	UFUNCTION(Server, Reliable)
 	void PlaceBomb();
+
+	UFUNCTION(Server, Reliable)
+	void BlowUp_Private();
+
+protected:
+
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UCameraComponent* CameraComponent;
+
+	UPROPERTY(EditAnywhere, Category = "Parameters")
+	TSubclassOf<ABomb> BombClass;
 
 };

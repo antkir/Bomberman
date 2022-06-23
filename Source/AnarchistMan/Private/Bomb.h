@@ -21,6 +21,22 @@ public:
 
 protected:
 
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	void HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+private:
+
+	void LifeSpanExpired() override;
+
+	void BlowUp();
+
+	uint32 LineTraceExplosion(FVector Start, FVector End);
+
+protected:
+
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UBoxComponent* OverlapComponent;
 
@@ -39,18 +55,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	uint64 RadiusBlocks;
 
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-	UFUNCTION()
-	void HandleOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
 private:
 
-	void LifeSpanExpired() override;
+	struct
+	{
+		uint64 Right;
+		uint64 Left;
+		uint64 Up;
+		uint64 Down;
+	} ExplosionConstraints;
 
-	void BlowUp();
+	bool ExplosionTriggered;
 
 };

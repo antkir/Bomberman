@@ -3,6 +3,9 @@
 #include "PlayerCharacter.h"
 #include <Utils.h>
 #include <Bomb.h>
+#include <Explosion.h>
+#include <AnarchistMan/AnarchistManGameModeBase.h>
+#include <AnarchistMan/Private/AnarchistManPlayerState.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 
@@ -15,8 +18,6 @@ APlayerCharacter::APlayerCharacter()
 	// Set camera component
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(GetRootComponent());
-
-	GetCapsuleComponent()->SetGenerateOverlapEvents(true);
 }
 
 // Called to bind functionality to input
@@ -30,6 +31,15 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	// Bind actions
 	PlayerInputComponent->BindAction("Place Bomb", IE_Pressed, this, &APlayerCharacter::PlaceBomb);
+}
+
+void APlayerCharacter::BlowUp()
+{
+	BlowUp_Private();
+	SetActorEnableCollision(false);
+	GetMesh()->SetVisibility(false);
+	GetCapsuleComponent()->SetVisibility(false);
+	DisableInput(nullptr);
 }
 
 // Called when the game starts or when spawned
@@ -89,4 +99,13 @@ void APlayerCharacter::PlaceBomb_Implementation()
 	Transform.SetRotation(Rotation.Quaternion());
 	FActorSpawnParameters SpawnParameters;
 	GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
+}
+
+void APlayerCharacter::BlowUp_Private_Implementation()
+{
+	AAnarchistManGameModeBase* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
+	if (GameMode)
+	{
+		GameMode->PlayerDeath(GetController());
+	}
 }

@@ -20,6 +20,15 @@ public:
 
 protected:
 
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+private:
+
+	void SpawnBreakableBlocks();
+
+protected:
+
 	UPROPERTY(EditAnywhere, Category = "Generation")
 	uint64 Rows;
 
@@ -31,14 +40,5 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Items")
 	TSubclassOf<ABreakableBlock> BreakableBlockClass;
-
-protected:
-
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-private:
-
-	void SpawnBreakableBlocks();
 
 };

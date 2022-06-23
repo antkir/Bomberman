@@ -2,6 +2,7 @@
 
 #include "Bomb.h"
 #include <Utils.h>
+#include <BreakableBlock.h>
 #include <Explosion.h>
 #include <PlayerCharacter.h>
 #include <Components/BoxComponent.h>
@@ -31,10 +32,19 @@ ABomb::ABomb()
 
 	MeshComponent->SetupAttachment(RootComponent);
 
-	OverlapComponent->OnComponentEndOverlap.AddDynamic(this, &ABomb::HandleOverlapEnd);
+	OverlapComponent->OnComponentEndOverlap.AddDynamic(this, &ABomb::HandleEndOverlap);
 
 	LifeSpan = 3.f;
 	RadiusBlocks = 2;
+
+	ExplosionConstraints = {
+		RadiusBlocks,
+		RadiusBlocks,
+		RadiusBlocks,
+		RadiusBlocks
+	};
+
+	ExplosionTriggered = false;
 }
 
 // Called when the game starts or when spawned
@@ -52,7 +62,6 @@ void ABomb::BeginPlay()
 	TArray<AActor*> OverlappingActors;
 	GetOverlappingActors(OverlappingActors, APlayerCharacter::StaticClass());
 
-	// loop through TArray
 	for (AActor* OverlappingActor : OverlappingActors)
 	{
 		APlayerCharacter* Character = Cast<APlayerCharacter>(OverlappingActor);
@@ -63,12 +72,22 @@ void ABomb::BeginPlay()
 	}
 }
 
-void ABomb::HandleOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
 	if (Character)
 	{
-		OverlapComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+		// Start blocking players as soon as they stop overlapping a bomb
+		TArray<FOverlapResult> OutOverlaps{};
+		FVector Location = GetActorLocation();
+		FRotator Rotation = FRotator(0.f);
+		FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 2));
+		FCollisionObjectQueryParams QueryParams = FCollisionObjectQueryParams(ECollisionChannel::ECC_Pawn);
+		bool PawnOverlap = GetWorld()->OverlapAnyTestByObjectType(Location, Rotation.Quaternion(), QueryParams, CollisionShape);
+		if (!PawnOverlap)
+		{
+			OverlapComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+		}
 	}
 }
 
@@ -80,180 +99,105 @@ void ABomb::LifeSpanExpired()
 
 void ABomb::BlowUp()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	if (ExplosionClass == nullptr)
 	{
 		UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
 		return;
 	}
 
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	struct
-	{
-		uint32 Right;
-		uint32 Left;
-		uint32 Up;
-		uint32 Down;
-	} ExplosionConstraints{
-		RadiusBlocks,
-		RadiusBlocks,
-		RadiusBlocks,
-		RadiusBlocks
-	};
-
-	FVector Start = GetActorLocation();
+	ExplosionTriggered = true;
 
 	// Right
 	{
-		TArray<FHitResult> OutHits{};
+		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
 		End.X = Utils::RoundUnitCenter(End.X) + Utils::Unit * RadiusBlocks;
-		GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
-		for (const FHitResult& HitResult : OutHits)
-		{
-			if (!HitResult.bBlockingHit)
-			{
-				AActor* Actor = HitResult.GetActor();
-				APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(Actor);
-				if (PlayerCharacter == nullptr && IsValid(Actor))
-				{
-					Actor->Destroy();
-				}
-			}
-			else
-			{
-				float BlockingDistance = HitResult.Distance;
-				ExplosionConstraints.Right = FMath::RoundToZero(BlockingDistance / Utils::Unit);
-			}
-		}
+		uint64 Constraint = LineTraceExplosion(Start, End);
+		ExplosionConstraints.Right = std::min(ExplosionConstraints.Down, Constraint);
 	}
 
 	// Left
 	{
-		TArray<FHitResult> OutHits{};
+		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
 		End.X = Utils::RoundUnitCenter(End.X) - Utils::Unit * RadiusBlocks;
-		GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
-		for (const FHitResult& HitResult : OutHits)
-		{
-			if (!HitResult.bBlockingHit)
-			{
-				AActor* Actor = HitResult.GetActor();
-				APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(Actor);
-				if (PlayerCharacter == nullptr && IsValid(Actor))
-				{
-					Actor->Destroy();
-				}
-			}
-			else
-			{
-				float BlockingDistance = HitResult.Distance;
-				ExplosionConstraints.Left = FMath::RoundToZero(BlockingDistance / Utils::Unit);
-			}
-		}
+		uint64 Constraint = LineTraceExplosion(Start, End);
+		ExplosionConstraints.Left = std::min(ExplosionConstraints.Down, Constraint);
 	}
 
 	// Up
 	{
-		TArray<FHitResult> OutHits{};
+		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
 		End.Y = Utils::RoundUnitCenter(End.Y) - Utils::Unit * RadiusBlocks;
-		GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
-		for (const FHitResult& HitResult : OutHits)
-		{
-			if (!HitResult.bBlockingHit)
-			{
-				AActor* Actor = HitResult.GetActor();
-				APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(Actor);
-				if (PlayerCharacter == nullptr && IsValid(Actor))
-				{
-					Actor->Destroy();
-				}
-			}
-			else
-			{
-				float BlockingDistance = HitResult.Distance;
-				ExplosionConstraints.Up = FMath::RoundToZero(BlockingDistance / Utils::Unit);
-			}
-		}
+		uint64 Constraint = LineTraceExplosion(Start, End);
+		ExplosionConstraints.Up = std::min(ExplosionConstraints.Down, Constraint);
 	}
 
 	// Down
 	{
-		TArray<FHitResult> OutHits{};
+		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
 		End.Y = Utils::RoundUnitCenter(End.Y) + Utils::Unit * RadiusBlocks;
-		GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
-		for (const FHitResult& HitResult : OutHits)
-		{
-			if (!HitResult.bBlockingHit)
-			{
-				AActor* Actor = HitResult.GetActor();
-				APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(Actor);
-				if (PlayerCharacter == nullptr && IsValid(Actor))
-				{
-					Actor->Destroy();
-				}
-			}
-			else
-			{
-				float BlockingDistance = HitResult.Distance;
-				ExplosionConstraints.Down = FMath::RoundToZero(BlockingDistance / Utils::Unit);
-			}
-		}
+		uint64 Constraint = LineTraceExplosion(Start, End);
+		ExplosionConstraints.Down = std::min(ExplosionConstraints.Down, Constraint);
 	}
 
-	FRotator Rotation = FRotator(0.f);
-	FTransform Transform;
-	Transform.SetLocation(Start);
-	Transform.SetRotation(Rotation.Quaternion());
-	FActorSpawnParameters SpawnParameters;
-	GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform, SpawnParameters);
+	{
+		FVector Location = GetActorLocation();
+		FRotator Rotation = FRotator(0.f);
+		FTransform Transform;
+		Transform.SetLocation(GetActorLocation());
+		Transform.SetRotation(Rotation.Quaternion());
+		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
+	}
 
 	for (uint8 Index = 1; Index <= ExplosionConstraints.Right; Index++)
 	{
 		// Right
-		{
-			FVector Location = GetActorLocation();
-			Location.X = Utils::RoundUnitCenter(Location.X) + Utils::Unit * Index;
-			Location.Y = Utils::RoundUnitCenter(Location.Y);
-			Transform.SetLocation(Location);
-			Transform.SetRotation(Rotation.Quaternion());
-			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform, SpawnParameters);
-		}
+		FVector Location = GetActorLocation();
+		FRotator Rotation = FRotator(0.f);
+		Location.X = Utils::RoundUnitCenter(Location.X) + Utils::Unit * Index;
+		Location.Y = Utils::RoundUnitCenter(Location.Y);
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(Rotation.Quaternion());
+		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
 	}
 
 	for (uint8 Index = 1; Index <= ExplosionConstraints.Left; Index++)
 	{
 		// Left
-		{
-			FVector Location = GetActorLocation();
-			Location.X = Utils::RoundUnitCenter(Location.X) - Utils::Unit * Index;
-			Location.Y = Utils::RoundUnitCenter(Location.Y);
-			Transform.SetLocation(Location);
-			Transform.SetRotation(Rotation.Quaternion());
-			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform, SpawnParameters);
-		}
+		FVector Location = GetActorLocation();
+		FRotator Rotation = FRotator(0.f);
+		Location.X = Utils::RoundUnitCenter(Location.X) - Utils::Unit * Index;
+		Location.Y = Utils::RoundUnitCenter(Location.Y);
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(Rotation.Quaternion());
+		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
 	}
 
 	for (uint8 Index = 1; Index <= ExplosionConstraints.Up; Index++)
 	{
 		// Up
-		{
-			FVector Location = GetActorLocation();
-			Location.X = Utils::RoundUnitCenter(Location.X);
-			Location.Y = Utils::RoundUnitCenter(Location.Y) - Utils::Unit * Index;
-			Transform.SetLocation(Location);
-			Transform.SetRotation(Rotation.Quaternion());
-			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform, SpawnParameters);
-		}
+		FVector Location = GetActorLocation();
+		FRotator Rotation = FRotator(0.f);
+		Location.X = Utils::RoundUnitCenter(Location.X);
+		Location.Y = Utils::RoundUnitCenter(Location.Y) - Utils::Unit * Index;
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(Rotation.Quaternion());
+		GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
 	}
 
 	for (uint8 Index = 1; Index <= ExplosionConstraints.Down; Index++)
@@ -261,11 +205,65 @@ void ABomb::BlowUp()
 		// Down
 		{
 			FVector Location = GetActorLocation();
+			FRotator Rotation = FRotator(0.f);
 			Location.X = Utils::RoundUnitCenter(Location.X);
 			Location.Y = Utils::RoundUnitCenter(Location.Y) + Utils::Unit * Index;
+			FTransform Transform;
 			Transform.SetLocation(Location);
 			Transform.SetRotation(Rotation.Quaternion());
-			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform, SpawnParameters);
+			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
 		}
 	}
+}
+
+uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
+{
+	uint32 BlockingDistance = std::numeric_limits<uint32>::max();
+
+	TArray<FHitResult> OutHits{};
+	GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
+
+	for (const FHitResult& HitResult : OutHits)
+	{
+		if (!HitResult.bBlockingHit)
+		{
+			AActor* Actor = HitResult.GetActor();
+
+			if (!IsValid(Actor))
+			{
+				continue;
+			}
+
+			if (Actor->IsA(ABomb::StaticClass()))
+			{
+				ABomb* Bomb = Cast<ABomb>(Actor);
+				if (Bomb != this && !Bomb->ExplosionTriggered)
+				{
+					Bomb->BlowUp();
+					Bomb->Destroy();
+
+					float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+					BlockingDistance = static_cast<uint32>(DistanceRounded);
+
+					break;
+				}
+			}
+			else if (Actor->IsA(ABreakableBlock::StaticClass()))
+			{
+				Actor->Destroy();
+
+				float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+				BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
+
+				break;
+			}
+		}
+		else
+		{
+			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+			BlockingDistance = static_cast<uint32>(DistanceRounded);
+		}
+	}
+
+	return BlockingDistance;
 }

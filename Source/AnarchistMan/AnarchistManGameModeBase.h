@@ -13,5 +13,15 @@ UCLASS()
 class ANARCHISTMAN_API AAnarchistManGameModeBase : public AGameModeBase
 {
 	GENERATED_BODY()
+
+public:
+
+	void PostLogin(APlayerController* NewPlayer) override;
+
+	void PlayerDeath(AController* Controller);
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Spectating")
+	TSubclassOf<AActor> GameOverCamera;
 	
 };

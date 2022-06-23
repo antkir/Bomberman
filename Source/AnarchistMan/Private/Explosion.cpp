@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Explosion.h"
+#include <PlayerCharacter.h>
 #include <Utils.h>
 
 // Sets default values
@@ -17,6 +18,8 @@ AExplosion::AExplosion()
 	// Set the component's mesh
 	USkeletalMesh* ExplosionMesh = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Engine/EngineMeshes/SkeletalCube'")).Object;
 	MeshComponent->SetSkeletalMesh(ExplosionMesh);
+
+	MeshComponent->OnComponentBeginOverlap.AddDynamic(this, &AExplosion::HandleBeginOverlap);
 
 	// Set as root component
 	RootComponent = MeshComponent;
@@ -36,5 +39,14 @@ void AExplosion::BeginPlay()
 		MeshComponent->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 		MeshComponent->SetAnimation(IdleAnimation);
 		MeshComponent->Play(true);
+	}
+}
+
+void AExplosion::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
+	if (Character)
+	{
+		Character->BlowUp();
 	}
 }
