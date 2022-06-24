@@ -101,7 +101,7 @@ void APlayerCharacter::PlaceBomb_Implementation()
 	GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
 }
 
-void APlayerCharacter::BlowUp_Private_Implementation()
+void APlayerCharacter::BlowUp_Private()
 {
 	AAnarchistManGameModeBase* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
 	if (GameMode)

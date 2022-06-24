@@ -15,19 +15,19 @@ void AAnarchistManGameModeBase::PostLogin(APlayerController* NewPlayer)
 
 void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
 {
-    auto* PlayerController = Cast<AAnarchistManPlayerController>(Controller);
-    if (PlayerController)
+    AAnarchistManPlayerController* AMPlayerController = Cast<AAnarchistManPlayerController>(Controller);
+    if (AMPlayerController)
     {
-        auto* MyGameState = GetGameState<AAnarchistManGameStateBase>();
+        AAnarchistManGameStateBase* MyGameState = GetGameState<AAnarchistManGameStateBase>();
         if (MyGameState)
         {
             MyGameState->PlayerDeath();
 
             if (MyGameState->GetPlayersAlive() > 0)
             {
-                APlayerState* PlayerState = PlayerController->GetNextViewablePlayer(1);
+                APlayerState* PlayerState = AMPlayerController->GetNextViewablePlayer(1);
                 APawn* Pawn = PlayerState->GetPawn();
-                PlayerController->SetViewTargetWithBlend(Pawn, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+                AMPlayerController->SetViewTargetWithBlend(Pawn, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
             }
             else
             {
@@ -38,7 +38,11 @@ void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
 
                     if (Actors.Num() > 0)
                     {
-                        PlayerController->SetViewTargetWithBlend(Actors[0], 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+                        for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
+                        {
+                            APlayerController* PlayerController = PlayerState->GetPlayerController();
+                            PlayerController->SetViewTargetWithBlend(Actors[0], 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+                        }
                     }
                 }
                 else

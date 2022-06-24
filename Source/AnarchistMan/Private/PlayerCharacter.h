@@ -43,7 +43,6 @@ private:
 	UFUNCTION(Server, Reliable)
 	void PlaceBomb();
 
-	UFUNCTION(Server, Reliable)
 	void BlowUp_Private();
 
 protected:
