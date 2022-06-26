@@ -22,6 +22,6 @@ public:
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Spectating")
-	TSubclassOf<AActor> GameOverCamera;
+	TSubclassOf<AActor> GameOverCameraClass;
 	
 };

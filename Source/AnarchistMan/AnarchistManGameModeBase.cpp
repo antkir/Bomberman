@@ -31,17 +31,16 @@ void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
             }
             else
             {
-                if (GameOverCamera)
+                if (GameOverCameraClass)
                 {
-                    TArray<AActor*> Actors;
-                    UGameplayStatics::GetAllActorsOfClass(this, GameOverCamera, Actors);
+                    AActor* GameOverCamera = UGameplayStatics::GetActorOfClass(this, GameOverCameraClass);
 
-                    if (Actors.Num() > 0)
+                    if (GameOverCamera)
                     {
                         for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
                         {
                             APlayerController* PlayerController = PlayerState->GetPlayerController();
-                            PlayerController->SetViewTargetWithBlend(Actors[0], 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+                            PlayerController->SetViewTargetWithBlend(GameOverCamera, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
                         }
                     }
                 }

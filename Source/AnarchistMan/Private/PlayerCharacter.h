@@ -31,13 +31,15 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 private:
 
-	/** Handles moving forward/backward */
-	void MoveForward(float Val);
+	/** Handles moving up/down */
+	void MoveVertical(float Val);
 
 	/** Handles strafing movement, left and right */
-	void MoveRight(float Val);
+	void MoveHorizontal(float Val);
 
 	/** Bomb placing */
 	UFUNCTION(Server, Reliable)

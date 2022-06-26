@@ -8,6 +8,7 @@
 #include <AnarchistMan/Private/AnarchistManPlayerState.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
+#include <GameFramework/CharacterMovementComponent.h>
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -26,8 +27,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// Bind movement events
-	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &APlayerCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("Move Right / Left", this, &APlayerCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &APlayerCharacter::MoveVertical);
+	PlayerInputComponent->BindAxis("Move Right / Left", this, &APlayerCharacter::MoveHorizontal);
 
 	// Bind actions
 	PlayerInputComponent->BindAction("Place Bomb", IE_Pressed, this, &APlayerCharacter::PlaceBomb);
@@ -48,36 +49,30 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
-void APlayerCharacter::MoveForward(float Value)
+void APlayerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+void APlayerCharacter::MoveVertical(float Value)
 {
 	if (Value != 0.f) {
-		if (Value > 0.f)
-		{
-			GetMesh()->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
-		} else
-		{
-			GetMesh()->SetRelativeRotation(FRotator(0.f, 0.f, 0.f));
-		}
+		float Rotation = Value > 0.f ? -90.f : 90.f;
+		Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
 
 		// add movement in that direction
-		AddMovementInput(GetActorRightVector(), Value * -1.f);
+		AddMovementInput(FVector::YAxisVector, Value * -1.f);
 	}
 }
 
-void APlayerCharacter::MoveRight(float Value)
+void APlayerCharacter::MoveHorizontal(float Value)
 {
 	if (Value != 0.f) {
-		if (Value > 0.f)
-		{
-			GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
-		}
-		else
-		{
-			GetMesh()->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
-		}
+		float Rotation = Value > 0.f ? 0.f : 180.f;
+		Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
 		
 		// add movement in that direction
-		AddMovementInput(GetActorForwardVector(), Value);
+		AddMovementInput(FVector::XAxisVector, Value);
 	}
 }
 
