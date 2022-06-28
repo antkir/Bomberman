@@ -52,6 +52,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UCameraComponent* CameraComponent;
 
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	FVector CameraLocationOffset;
+
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<ABomb> BombClass;
 

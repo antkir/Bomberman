@@ -5,6 +5,9 @@
 # Binary files
 Binaries/*
 
+# Build files
+Build/*
+
 # Cache files for the editor to use
 DerivedDataCache/*
 

@@ -19,6 +19,11 @@ APlayerCharacter::APlayerCharacter()
 	// Set camera component
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(GetRootComponent());
+
+	CameraComponent->SetUsingAbsoluteLocation(true);
+	CameraComponent->SetUsingAbsoluteRotation(true);
+
+	CameraLocationOffset = FVector(0.f);
 }
 
 // Called to bind functionality to input
@@ -27,7 +32,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// Bind movement events
-	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &APlayerCharacter::MoveVertical);
+	PlayerInputComponent->BindAxis("Move Up / Down", this, &APlayerCharacter::MoveVertical);
 	PlayerInputComponent->BindAxis("Move Right / Left", this, &APlayerCharacter::MoveHorizontal);
 
 	// Bind actions
@@ -52,16 +57,22 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	FVector CameraLocation = GetActorLocation();
+	CameraLocation.X += CameraLocationOffset.X;
+	CameraLocation.Y += CameraLocationOffset.Y;
+	CameraLocation.Z += CameraLocationOffset.Z;
+	CameraComponent->SetWorldLocation(CameraLocation);
 }
 
 void APlayerCharacter::MoveVertical(float Value)
 {
 	if (Value != 0.f) {
-		float Rotation = Value > 0.f ? -90.f : 90.f;
+		float Rotation = Value > 0.f ? 90.f : -90.f;
 		Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
 
 		// add movement in that direction
-		AddMovementInput(FVector::YAxisVector, Value * -1.f);
+		AddMovementInput(FVector::YAxisVector, Value);
 	}
 }
 
