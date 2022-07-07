@@ -33,6 +33,10 @@ protected:
 
 	virtual void Tick(float DeltaTime) override;
 
+	virtual void OnRep_PlayerState() override;
+
+	virtual void PossessedBy(AController* NewController) override;
+
 private:
 
 	/** Handles moving up/down */
@@ -45,7 +49,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void PlaceBomb();
 
-	void BlowUp_Private();
+	void ToggleGameMenu();
 
 protected:
 
@@ -57,5 +61,14 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<ABomb> BombClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
+	TSubclassOf<UUserWidget> GameMenuWidgetClass;
+
+private:
+
+	bool bGameMenuOpen;
+
+	UUserWidget* GameMenuWidget;
 
 };

@@ -6,6 +6,8 @@
 #include <Explosion.h>
 #include <PlayerCharacter.h>
 #include <Components/BoxComponent.h>
+#include <Components/CapsuleComponent.h>
+#include <Net/UnrealNetwork.h>
 
 // Sets default values
 ABomb::ABomb()
@@ -32,8 +34,6 @@ ABomb::ABomb()
 
 	MeshComponent->SetupAttachment(RootComponent);
 
-	OverlapComponent->OnComponentEndOverlap.AddDynamic(this, &ABomb::HandleEndOverlap);
-
 	LifeSpan = 3.f;
 	RadiusBlocks = 2;
 
@@ -45,6 +45,17 @@ ABomb::ABomb()
 	};
 
 	ExplosionTriggered = false;
+
+	BlockPawnsMask = 0b1111;
+}
+
+void ABomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	auto DoRepLifetimeParams = FDoRepLifetimeParams();
+	DoRepLifetimeParams.RepNotifyCondition = ELifetimeRepNotifyCondition::REPNOTIFY_Always;
+	DOREPLIFETIME_WITH_PARAMS(ABomb, BlockPawnsMask, DoRepLifetimeParams);
 }
 
 // Called when the game starts or when spawned
@@ -59,16 +70,33 @@ void ABomb::BeginPlay()
 		MeshComponent->PlayAnimation(IdleAnimation, true);
 	}
 
-	TArray<AActor*> OverlappingActors;
-	GetOverlappingActors(OverlappingActors, APlayerCharacter::StaticClass());
-
-	for (AActor* OverlappingActor : OverlappingActors)
+	if (HasAuthority())
 	{
-		APlayerCharacter* Character = Cast<APlayerCharacter>(OverlappingActor);
-		if (Character)
+		// Do not block players if they are overlapping a bomb
+		TArray<FOverlapResult> OutOverlaps{};
+		FVector Location = GetActorLocation();
+		Location.Z = Utils::RoundUnitCenter(Location.Z);
+		FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 2));
+		FCollisionObjectQueryParams QueryParams;
+		QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
+		QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
+		QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
+		QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
+		GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
+
+		for (const FOverlapResult& Overlap : OutOverlaps)
 		{
-			OverlapComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+			auto* PC = Cast<APlayerCharacter>(Overlap.GetActor());
+			if (PC)
+			{
+				ECollisionChannel PlayerCollisionChannel = PC->GetCapsuleComponent()->GetCollisionObjectType();
+				BlockPawnsMask ^= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+			}
 		}
+
+		OnRep_BlockPawns();
+
+		OverlapComponent->OnComponentEndOverlap.AddDynamic(this, &ABomb::HandleEndOverlap);
 	}
 }
 
@@ -77,16 +105,23 @@ void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* O
 	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
 	if (Character)
 	{
-		// Start blocking players as soon as they stop overlapping a bomb
-		TArray<FOverlapResult> OutOverlaps{};
-		FVector Location = GetActorLocation();
-		FRotator Rotation = FRotator(0.f);
-		FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 2));
-		FCollisionObjectQueryParams QueryParams = FCollisionObjectQueryParams(ECollisionChannel::ECC_Pawn);
-		bool PawnOverlap = GetWorld()->OverlapAnyTestByObjectType(Location, Rotation.Quaternion(), QueryParams, CollisionShape);
-		if (!PawnOverlap)
+		ECollisionChannel PlayerCollisionChannel = Character->GetCapsuleComponent()->GetCollisionObjectType();
+		BlockPawnsMask |= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+	}
+	OnRep_BlockPawns();
+}
+
+void ABomb::OnRep_BlockPawns()
+{
+	for (uint32 Index = 0; Index < GetNum(Utils::PawnECCs); Index++)
+	{
+		if (BlockPawnsMask & (1 << Index))
 		{
-			OverlapComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+			OverlapComponent->SetCollisionResponseToChannel(Utils::PawnECCs[Index], ECollisionResponse::ECR_Block);
+		}
+		else
+		{
+			OverlapComponent->SetCollisionResponseToChannel(Utils::PawnECCs[Index], ECollisionResponse::ECR_Overlap);
 		}
 	}
 }
@@ -154,10 +189,9 @@ void ABomb::BlowUp()
 
 	{
 		FVector Location = GetActorLocation();
-		FRotator Rotation = FRotator(0.f);
 		FTransform Transform;
 		Transform.SetLocation(GetActorLocation());
-		Transform.SetRotation(Rotation.Quaternion());
+		Transform.SetRotation(FQuat::Identity);
 		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
 	}
 
@@ -165,12 +199,11 @@ void ABomb::BlowUp()
 	{
 		// Right
 		FVector Location = GetActorLocation();
-		FRotator Rotation = FRotator(0.f);
 		Location.X = Utils::RoundUnitCenter(Location.X) + Utils::Unit * Index;
 		Location.Y = Utils::RoundUnitCenter(Location.Y);
 		FTransform Transform;
 		Transform.SetLocation(Location);
-		Transform.SetRotation(Rotation.Quaternion());
+		Transform.SetRotation(FQuat::Identity);
 		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
 	}
 
@@ -178,12 +211,11 @@ void ABomb::BlowUp()
 	{
 		// Left
 		FVector Location = GetActorLocation();
-		FRotator Rotation = FRotator(0.f);
 		Location.X = Utils::RoundUnitCenter(Location.X) - Utils::Unit * Index;
 		Location.Y = Utils::RoundUnitCenter(Location.Y);
 		FTransform Transform;
 		Transform.SetLocation(Location);
-		Transform.SetRotation(Rotation.Quaternion());
+		Transform.SetRotation(FQuat::Identity);
 		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
 	}
 
@@ -191,12 +223,11 @@ void ABomb::BlowUp()
 	{
 		// Up
 		FVector Location = GetActorLocation();
-		FRotator Rotation = FRotator(0.f);
 		Location.X = Utils::RoundUnitCenter(Location.X);
 		Location.Y = Utils::RoundUnitCenter(Location.Y) - Utils::Unit * Index;
 		FTransform Transform;
 		Transform.SetLocation(Location);
-		Transform.SetRotation(Rotation.Quaternion());
+		Transform.SetRotation(FQuat::Identity);
 		GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
 	}
 
@@ -205,12 +236,11 @@ void ABomb::BlowUp()
 		// Down
 		{
 			FVector Location = GetActorLocation();
-			FRotator Rotation = FRotator(0.f);
 			Location.X = Utils::RoundUnitCenter(Location.X);
 			Location.Y = Utils::RoundUnitCenter(Location.Y) + Utils::Unit * Index;
 			FTransform Transform;
 			Transform.SetLocation(Location);
-			Transform.SetRotation(Rotation.Quaternion());
+			Transform.SetRotation(FQuat::Identity);
 			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
 		}
 	}

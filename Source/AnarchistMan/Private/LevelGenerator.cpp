@@ -62,10 +62,9 @@ void ALevelGenerator::SpawnBreakableBlocks()
 			}
 
 			FVector Location = FVector(RootLocation.X + Row * Utils::Unit + Utils::Unit / 2, RootLocation.Y + Column * Utils::Unit + Utils::Unit / 2, RootLocation.Z);
-			FRotator Rotation = FRotator(0.f, 0.f, 0.f);
 			FTransform Transform;
 			Transform.SetLocation(Location);
-			Transform.SetRotation(Rotation.Quaternion());
+			Transform.SetRotation(FQuat::Identity);
 			GetWorld()->SpawnActorAbsolute<ABreakableBlock>(BreakableBlockClass, Transform);
 		}
 	}

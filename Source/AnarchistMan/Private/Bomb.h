@@ -27,6 +27,9 @@ protected:
 	UFUNCTION()
 	void HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	UFUNCTION()
+	void OnRep_BlockPawns();
+
 private:
 
 	void LifeSpanExpired() override;
@@ -54,6 +57,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	uint64 RadiusBlocks;
+
+	/** A Replicated Boolean Flag */
+	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
+	uint8 BlockPawnsMask;
 
 private:
 

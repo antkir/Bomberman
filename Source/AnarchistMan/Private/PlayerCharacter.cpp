@@ -9,6 +9,7 @@
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <GameFramework/CharacterMovementComponent.h>
+#include <Blueprint/UserWidget.h>
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -22,8 +23,6 @@ APlayerCharacter::APlayerCharacter()
 
 	CameraComponent->SetUsingAbsoluteLocation(true);
 	CameraComponent->SetUsingAbsoluteRotation(true);
-
-	CameraLocationOffset = FVector(0.f);
 }
 
 // Called to bind functionality to input
@@ -37,15 +36,22 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	// Bind actions
 	PlayerInputComponent->BindAction("Place Bomb", IE_Pressed, this, &APlayerCharacter::PlaceBomb);
+	PlayerInputComponent->BindAction("Game Menu", IE_Pressed, this, &APlayerCharacter::ToggleGameMenu);
 }
 
 void APlayerCharacter::BlowUp()
 {
-	BlowUp_Private();
+	AController* PlayerController = GetController();
+
 	SetActorEnableCollision(false);
 	GetMesh()->SetVisibility(false);
-	GetCapsuleComponent()->SetVisibility(false);
 	DisableInput(nullptr);
+
+	AAnarchistManGameModeBase* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
+	if (GameMode)
+	{
+		GameMode->PlayerDeath(PlayerController);
+	}
 }
 
 // Called when the game starts or when spawned
@@ -63,6 +69,26 @@ void APlayerCharacter::Tick(float DeltaTime)
 	CameraLocation.Y += CameraLocationOffset.Y;
 	CameraLocation.Z += CameraLocationOffset.Z;
 	CameraComponent->SetWorldLocation(CameraLocation);
+}
+
+void APlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	check(GetPlayerState());
+
+	uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PawnECCs);
+	GetCapsuleComponent()->SetCollisionObjectType(Utils::PawnECCs[PlayerId]);
+}
+
+void APlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	check(GetPlayerState());
+
+	uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PawnECCs);
+	GetCapsuleComponent()->SetCollisionObjectType(Utils::PawnECCs[PlayerId]);
 }
 
 void APlayerCharacter::MoveVertical(float Value)
@@ -87,6 +113,42 @@ void APlayerCharacter::MoveHorizontal(float Value)
 	}
 }
 
+void APlayerCharacter::ToggleGameMenu()
+{
+	if (GameMenuWidgetClass)
+	{
+		APlayerController* PlayerController = Cast<APlayerController>(GetController());
+
+		if (!bGameMenuOpen)
+		{
+			GameMenuWidget = CreateWidget<UUserWidget>(PlayerController, GameMenuWidgetClass);
+			if (GameMenuWidget)
+			{
+				GameMenuWidget->AddToViewport();
+			}
+
+			PlayerController->SetShowMouseCursor(true);
+
+			bGameMenuOpen = true;
+		}
+		else
+		{
+			if (GameMenuWidget)
+			{
+				GameMenuWidget->RemoveFromViewport();
+			}
+
+			PlayerController->SetShowMouseCursor(false);
+
+			bGameMenuOpen = false;
+		}
+	}
+	else
+	{
+		UE_LOG(LogGame, Error, TEXT("GameOverWidgetClass property is not set!"));
+	}
+}
+
 void APlayerCharacter::PlaceBomb_Implementation()
 {
 	if (BombClass == nullptr)
@@ -99,19 +161,9 @@ void APlayerCharacter::PlaceBomb_Implementation()
 	Location.X = Utils::RoundUnitCenter(Location.X);
 	Location.Y = Utils::RoundUnitCenter(Location.Y);
 	Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-	FRotator Rotation = FRotator(0.f);
 	FTransform Transform;
 	Transform.SetLocation(Location);
-	Transform.SetRotation(Rotation.Quaternion());
+	Transform.SetRotation(FQuat::Identity);
 	FActorSpawnParameters SpawnParameters;
 	GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
-}
-
-void APlayerCharacter::BlowUp_Private()
-{
-	AAnarchistManGameModeBase* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
-	if (GameMode)
-	{
-		GameMode->PlayerDeath(GetController());
-	}
 }
