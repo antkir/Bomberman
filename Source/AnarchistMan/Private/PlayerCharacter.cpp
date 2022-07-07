@@ -4,8 +4,8 @@
 #include <Utils.h>
 #include <Bomb.h>
 #include <Explosion.h>
-#include <AnarchistMan/AnarchistManGameModeBase.h>
-#include <AnarchistMan/Private/AnarchistManPlayerState.h>
+#include <AnarchistManGameModeBase.h>
+#include <AnarchistManPlayerState.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <GameFramework/CharacterMovementComponent.h>
