@@ -18,14 +18,14 @@ public:
 	// Sets default values for this actor's properties
 	ALevelGenerator();
 
+public:
+
+	void SpawnBreakableBlocks();
+
 protected:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-private:
-
-	void SpawnBreakableBlocks();
 
 protected:
 

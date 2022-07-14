@@ -13,5 +13,19 @@ UCLASS()
 class AAnarchistManPlayerState : public APlayerState
 {
 	GENERATED_BODY()
+
+public:
+
+	void RoundWin();
+
+	uint64 GetRoundWins();
+
+public:
+
+	bool bIsDead;
+
+private:
+
+	uint64 RoundWins;
 	
 };

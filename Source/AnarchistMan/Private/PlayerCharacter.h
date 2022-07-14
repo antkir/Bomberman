@@ -26,12 +26,16 @@ public:
 
 	void BlowUp();
 
+	UCameraComponent* GetCameraComponent();
+
 protected:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void NotifyControllerChanged() override;
 
 	virtual void OnRep_PlayerState() override;
 

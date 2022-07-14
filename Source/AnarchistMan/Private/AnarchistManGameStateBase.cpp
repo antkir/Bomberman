@@ -5,7 +5,6 @@
 
 AAnarchistManGameStateBase::AAnarchistManGameStateBase()
 {
-    PlayersAlive = 0;
 }
 
 void AAnarchistManGameStateBase::AddPlayerState(APlayerState* PlayerState)
@@ -31,4 +30,19 @@ void AAnarchistManGameStateBase::PlayerDeath()
 uint64 AAnarchistManGameStateBase::GetPlayersAlive()
 {
     return PlayersAlive;
+}
+
+void AAnarchistManGameStateBase::SetPlayersAlive(uint64 Num)
+{
+    PlayersAlive = Num;
+}
+
+void AAnarchistManGameStateBase::RoundPlayed()
+{
+    RoundsPlayed++;
+}
+
+uint64 AAnarchistManGameStateBase::GetRoundsPlayed()
+{
+    return RoundsPlayed;
 }

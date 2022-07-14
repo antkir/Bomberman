@@ -5,7 +5,9 @@
 #include <Bomb.h>
 #include <Explosion.h>
 #include <AnarchistManGameModeBase.h>
+#include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
+#include <OverviewCamera.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <GameFramework/CharacterMovementComponent.h>
@@ -41,17 +43,18 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void APlayerCharacter::BlowUp()
 {
-	AController* PlayerController = GetController();
+    auto* PlayerController = Cast<APlayerController>(GetController());
 
-	SetActorEnableCollision(false);
-	GetMesh()->SetVisibility(false);
-	DisableInput(nullptr);
+    auto* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
+    GameMode->PlayerDeath(PlayerController);
 
-	AAnarchistManGameModeBase* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
-	if (GameMode)
-	{
-		GameMode->PlayerDeath(PlayerController);
-	}
+    PlayerController->UnPossess();
+    Destroy();
+}
+
+UCameraComponent* APlayerCharacter::GetCameraComponent()
+{
+    return CameraComponent;
 }
 
 // Called when the game starts or when spawned
@@ -71,24 +74,48 @@ void APlayerCharacter::Tick(float DeltaTime)
 	CameraComponent->SetWorldLocation(CameraLocation);
 }
 
+void APlayerCharacter::NotifyControllerChanged()
+{
+    Super::NotifyControllerChanged();
+
+    if (IsLocallyControlled())
+    {
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(GetController());
+        if (PlayerController->GetViewTarget()->IsA(AOverviewCamera::StaticClass()))
+        {
+            FRotator PawnRotation = GetActorRotation();
+            PlayerController->ClientSetRotation(PawnRotation);
+
+            FViewTargetTransitionParams TransitionParams;
+            TransitionParams.BlendTime = 5.f;
+            TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
+            TransitionParams.BlendExp = 0;
+            TransitionParams.bLockOutgoing = true;
+            PlayerController->ServerSetViewTarget(this, TransitionParams);
+        }
+    }
+}
+
 void APlayerCharacter::OnRep_PlayerState()
 {
-	Super::OnRep_PlayerState();
+    Super::OnRep_PlayerState();
 
-	check(GetPlayerState());
-
-	uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PawnECCs);
-	GetCapsuleComponent()->SetCollisionObjectType(Utils::PawnECCs[PlayerId]);
+    if (GetPlayerState())
+    {
+        uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PlayerECCs);
+        GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+    }
 }
 
 void APlayerCharacter::PossessedBy(AController* NewController)
 {
-	Super::PossessedBy(NewController);
+    Super::PossessedBy(NewController);
 
-	check(GetPlayerState());
-
-	uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PawnECCs);
-	GetCapsuleComponent()->SetCollisionObjectType(Utils::PawnECCs[PlayerId]);
+	if (GetPlayerState())
+	{
+		uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PlayerECCs);
+		GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+	}
 }
 
 void APlayerCharacter::MoveVertical(float Value)

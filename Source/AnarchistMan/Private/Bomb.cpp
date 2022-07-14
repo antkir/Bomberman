@@ -30,8 +30,6 @@ ABomb::ABomb()
 	USkeletalMesh* BombMesh = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Engine/EngineMeshes/SkeletalCube'")).Object;
 	MeshComponent->SetSkeletalMesh(BombMesh);
 
-	MeshComponent->SetGenerateOverlapEvents(true);
-
 	MeshComponent->SetupAttachment(RootComponent);
 
 	LifeSpan = 3.f;
@@ -113,15 +111,15 @@ void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* O
 
 void ABomb::OnRep_BlockPawns()
 {
-	for (uint32 Index = 0; Index < GetNum(Utils::PawnECCs); Index++)
+	for (uint32 Index = 0; Index < GetNum(Utils::PlayerECCs); Index++)
 	{
 		if (BlockPawnsMask & (1 << Index))
 		{
-			OverlapComponent->SetCollisionResponseToChannel(Utils::PawnECCs[Index], ECollisionResponse::ECR_Block);
+			OverlapComponent->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Block);
 		}
 		else
 		{
-			OverlapComponent->SetCollisionResponseToChannel(Utils::PawnECCs[Index], ECollisionResponse::ECR_Overlap);
+			OverlapComponent->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Overlap);
 		}
 	}
 }
@@ -134,14 +132,14 @@ void ABomb::LifeSpanExpired()
 
 void ABomb::BlowUp()
 {
-	if (!HasAuthority())
-	{
-		return;
-	}
-
 	if (ExplosionClass == nullptr)
 	{
 		UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
+		return;
+	}
+
+	if (!HasAuthority())
+	{
 		return;
 	}
 

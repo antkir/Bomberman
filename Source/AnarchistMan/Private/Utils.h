@@ -16,11 +16,20 @@ namespace Utils {
 
 constexpr float Unit = 100.f;
 
-constexpr ECollisionChannel PawnECCs[] = {
+constexpr ECollisionChannel PlayerECCs[]
+{
 	ECC_Pawn1,
 	ECC_Pawn2,
 	ECC_Pawn3,
 	ECC_Pawn4,
+};
+
+constexpr FColor PlayerColors[]
+{
+	FColor(255, 0, 0),
+	FColor(0, 255, 0),
+	FColor(0, 0, 255),
+	FColor(255, 255, 0),
 };
 
 inline float RoundUnitCenter(float Num)

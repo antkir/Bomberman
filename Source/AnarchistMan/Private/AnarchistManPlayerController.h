@@ -17,8 +17,17 @@ class AAnarchistManPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	AAnarchistManPlayerController();
+
+public:
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetViewTarget(AActor* NewViewTarget, FViewTargetTransitionParams TransitionParams);
+
+	UFUNCTION(Client, Reliable)
+	void RoundOver(TSubclassOf<UUserWidget> RoundOverWidgetClass);
 	
 	UFUNCTION(Client, Reliable)
-	void GameOver(TSubclassOf<UUserWidget> GameOverWidgetClass);
+	void GameOver(TSubclassOf<UUserWidget> GameOverWidgetClass, const FString& PlayerName);
 
 };
