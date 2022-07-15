@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "AnarchistManGameModeBase.h"
-#include <AnarchistManGameStateBase.h>
+#include "AnarchistManGameMode.h"
+#include <AnarchistManGameState.h>
 #include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
 #include <BreakableBlock.h>
@@ -15,19 +15,19 @@
 #include <Engine/Public/EngineUtils.h>
 #include <Camera/CameraComponent.h>
 
-AAnarchistManGameModeBase::AAnarchistManGameModeBase()
+AAnarchistManGameMode::AAnarchistManGameMode()
 {
     GameOverTimeout = 3.f;
 
     RoundsToWin = 3;
 }
 
-void AAnarchistManGameModeBase::BeginPlay()
+void AAnarchistManGameMode::BeginPlay()
 {
     Super::BeginPlay();
 }
 
-void AAnarchistManGameModeBase::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+void AAnarchistManGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
     if (GetNumPlayers() >= 4)
     {
@@ -39,14 +39,14 @@ void AAnarchistManGameModeBase::PreLogin(const FString& Options, const FString& 
     Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
 }
 
-void AAnarchistManGameModeBase::PostLogin(APlayerController* NewPlayer)
+void AAnarchistManGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
     NewPlayer->SetViewTarget(NewPlayer->GetPawn());
 }
 
-AActor* AAnarchistManGameModeBase::ChoosePlayerStart_Implementation(AController* Player)
+AActor* AAnarchistManGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
     // Choose a player start
     APlayerStart* FoundPlayerStart = nullptr;
@@ -97,7 +97,7 @@ AActor* AAnarchistManGameModeBase::ChoosePlayerStart_Implementation(AController*
     return FoundPlayerStart;
 }
 
-void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
+void AAnarchistManGameMode::PlayerDeath(AController* Controller)
 {
     if (LevelObserverCameraClass == nullptr)
     {
@@ -109,7 +109,7 @@ void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
         UE_LOG(LogGame, Error, TEXT("GameOverWidgetClass property is not set!"));
     }
 
-    auto* AMGameState = GetGameState<AAnarchistManGameStateBase>();
+    auto* AMGameState = GetGameState<AAnarchistManGameState>();
     auto* PlayerController = Cast<AAnarchistManPlayerController>(Controller);
     auto* PlayerState = PlayerController->GetPlayerState<AAnarchistManPlayerState>();
 
@@ -170,7 +170,7 @@ void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
                 }
             }
 
-            GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameModeBase::RoundOver, 8.f);
+            GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::RoundOver, 8.f);
         }
         else
         {
@@ -179,7 +179,7 @@ void AAnarchistManGameModeBase::PlayerDeath(AController* Controller)
     }
 }
 
-void AAnarchistManGameModeBase::RoundOver()
+void AAnarchistManGameMode::RoundOver()
 {
     for (TActorIterator<ABreakableBlock> It(GetWorld()); It; ++It)
     {
@@ -191,7 +191,7 @@ void AAnarchistManGameModeBase::RoundOver()
     auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
     LevelGenerator->SpawnBreakableBlocks();
 
-    auto* AMGameState = GetGameState<AAnarchistManGameStateBase>();
+    auto* AMGameState = GetGameState<AAnarchistManGameState>();
 
     for (const TObjectPtr<APlayerState>& PlayerState : AMGameState->PlayerArray)
     {
@@ -205,9 +205,9 @@ void AAnarchistManGameModeBase::RoundOver()
     AMGameState->SetPlayersAlive(GetNumPlayers());
 }
 
-void AAnarchistManGameModeBase::GameOver(AAnarchistManPlayerState* CurrentPlayerState)
+void AAnarchistManGameMode::GameOver(AAnarchistManPlayerState* CurrentPlayerState)
 {
-    auto* AMGameState = GetGameState<AAnarchistManGameStateBase>();
+    auto* AMGameState = GetGameState<AAnarchistManGameState>();
 
     if (LevelObserverCameraClass)
     {
@@ -240,10 +240,10 @@ void AAnarchistManGameModeBase::GameOver(AAnarchistManPlayerState* CurrentPlayer
     }
 
     // Initialize a timer for returning to main
-    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameModeBase::OnGameOverTimeout, GameOverTimeout);
+    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::OnGameOverTimeout, GameOverTimeout);
 }
 
-void AAnarchistManGameModeBase::OnGameOverTimeout()
+void AAnarchistManGameMode::OnGameOverTimeout()
 {
     UGameInstance* GameInstance = UGameplayStatics::GetGameInstance(this);
     GameInstance->ReturnToMainMenu();

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "AnarchistManGameModeBase.generated.h"
+#include "AnarchistManGameMode.generated.h"
 
 class AAnarchistManPlayerState;
 class UUserWidget;
@@ -13,13 +13,13 @@ class UUserWidget;
  * 
  */
 UCLASS()
-class ANARCHISTMAN_API AAnarchistManGameModeBase : public AGameModeBase
+class ANARCHISTMAN_API AAnarchistManGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
 public:
 
-	AAnarchistManGameModeBase();
+	AAnarchistManGameMode();
 
 public:
 

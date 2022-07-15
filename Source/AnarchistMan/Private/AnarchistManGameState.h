@@ -4,19 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
-#include "AnarchistManGameStateBase.generated.h"
+#include "AnarchistManGameState.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class AAnarchistManGameStateBase : public AGameStateBase
+class AAnarchistManGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 
 public:
 
-	AAnarchistManGameStateBase();
+	AAnarchistManGameState();
 
 public:
 

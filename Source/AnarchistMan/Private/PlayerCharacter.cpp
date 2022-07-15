@@ -4,7 +4,7 @@
 #include <Utils.h>
 #include <Bomb.h>
 #include <Explosion.h>
-#include <AnarchistManGameModeBase.h>
+#include <AnarchistManGameMode.h>
 #include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
 #include <OverviewCamera.h>
@@ -45,7 +45,7 @@ void APlayerCharacter::BlowUp()
 {
     auto* PlayerController = Cast<APlayerController>(GetController());
 
-    auto* GameMode = Cast<AAnarchistManGameModeBase>(GetWorld()->GetAuthGameMode());
+    auto* GameMode = Cast<AAnarchistManGameMode>(GetWorld()->GetAuthGameMode());
     GameMode->PlayerDeath(PlayerController);
 
     PlayerController->UnPossess();
