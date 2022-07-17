@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+
 #include "AnarchistManGameMode.generated.h"
 
 class AAnarchistManPlayerState;
@@ -25,35 +26,43 @@ public:
 
 	void BeginPlay() override;
 
-	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
-	virtual void PostLogin(APlayerController* NewPlayer) override;
+	void PostLogin(APlayerController* NewPlayer) override;
 
-	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+	AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	void PlayerDeath(AController* Controller);
 
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+    void RestartGame();
+
 private:
 
-	void OnGameOverTimeout();
+    void BeginPreGame();
 
-	void RoundOver();
+    void PrepareGame();
 
-	void GameOver(AAnarchistManPlayerState* CurrentPlayerState);
+    void BeginGame();
+
+	void BeginRoundOver(FString PlayerName);
+
+	void BeginGameOver(FString PlayerName);
+
+    void OnGameOverTimeout();
+
+    inline FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime);
 
 protected:
 
+    UPROPERTY(Transient)
+    FName CurrentMatchState;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-	uint32 RoundsToWin;
+    uint8 RoundsToWin;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Properties")
 	TSubclassOf<AActor> LevelObserverCameraClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-	TSubclassOf<UUserWidget> GameOverWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-	TSubclassOf<UUserWidget> RoundOverWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Properties")
 	float GameOverTimeout;

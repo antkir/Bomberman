@@ -1,32 +1,66 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AnarchistManPlayerController.h"
+
+#include <AnarchistManGameMode.h>
+#include <PlayerCharacter.h>
+
 #include <Blueprint/UserWidget.h>
+#include <Net/UnrealNetwork.h>
 
 AAnarchistManPlayerController::AAnarchistManPlayerController()
 {
     bAutoManageActiveCameraTarget = false;
 }
 
-void AAnarchistManPlayerController::ServerSetViewTarget_Implementation(AActor* NewViewTarget, FViewTargetTransitionParams TransitionParams)
+void AAnarchistManPlayerController::SetupInputComponent()
 {
-    SetViewTarget(NewViewTarget, TransitionParams);
+    Super::SetupInputComponent();
+
+    InputComponent->BindAction("Game Menu", IE_Pressed, this, &AAnarchistManPlayerController::ToggleGameMenu);
 }
 
-void AAnarchistManPlayerController::RoundOver_Implementation(TSubclassOf<UUserWidget> RoundOverWidgetClass)
+void AAnarchistManPlayerController::BeginPreGame_Implementation(float Countdown)
 {
-    UUserWidget* RoundOverWidget = CreateWidget<UUserWidget>(this, RoundOverWidgetClass);
-    if (RoundOverWidget)
+    if (IsLocalController())
     {
-        RoundOverWidget->AddToViewport();
+        OnBeginPreGame(Countdown);
     }
 }
 
-void AAnarchistManPlayerController::GameOver_Implementation(TSubclassOf<UUserWidget> GameOverWidgetClass, const FString& PlayerName)
+void AAnarchistManPlayerController::BeginGame_Implementation()
 {
-    UUserWidget* GameOverWidget = CreateWidget<UUserWidget>(this, GameOverWidgetClass);
-    if (GameOverWidget)
+    if (IsLocalController())
     {
-        GameOverWidget->AddToViewport();
+        OnBeginGame();
     }
+}
+
+void AAnarchistManPlayerController::BeginRoundOver_Implementation(const FString& PlayerName)
+{
+    if (IsLocalController())
+    {
+        OnBeginRoundOver(PlayerName);
+    }
+}
+
+void AAnarchistManPlayerController::BeginGameOver_Implementation(const FString& PlayerName)
+{
+    if (IsLocalController())
+    {
+        OnBeginGameOver(PlayerName);
+    }
+}
+
+void AAnarchistManPlayerController::BeginPlay()
+{
+    Super::BeginPlay();
+
+    SetInputMode(FInputModeGameAndUI());
+}
+
+void AAnarchistManPlayerController::ToggleGameMenu()
+{
+    bIsGameMenuOpen = !bIsGameMenuOpen;
+    OnToggleGameMenu();
 }

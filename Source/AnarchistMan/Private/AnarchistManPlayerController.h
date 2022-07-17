@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+
 #include "AnarchistManPlayerController.generated.h"
 
 class UUserWidget;
@@ -21,13 +22,46 @@ public:
 
 public:
 
-	UFUNCTION(Server, Reliable)
-	void ServerSetViewTarget(AActor* NewViewTarget, FViewTargetTransitionParams TransitionParams);
+    void SetupInputComponent() override;
 
-	UFUNCTION(Client, Reliable)
-	void RoundOver(TSubclassOf<UUserWidget> RoundOverWidgetClass);
-	
-	UFUNCTION(Client, Reliable)
-	void GameOver(TSubclassOf<UUserWidget> GameOverWidgetClass, const FString& PlayerName);
+    UFUNCTION(NetMulticast, Reliable)
+    void BeginPreGame(float Countdown);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void BeginGame();
+
+    UFUNCTION(NetMulticast, Reliable)
+    void BeginRoundOver(const FString& PlayerName);
+
+    UFUNCTION(NetMulticast, Reliable)
+    void BeginGameOver(const FString& PlayerName);
+
+protected:
+
+    void BeginPlay() override;
+
+    UFUNCTION(BlueprintImplementableEvent)
+    void OnBeginPreGame(float Countdown);
+
+    UFUNCTION(BlueprintImplementableEvent)
+    void OnBeginGame();
+
+    UFUNCTION(BlueprintImplementableEvent)
+    void OnBeginRoundOver(const FString& PlayerName);
+
+    UFUNCTION(BlueprintImplementableEvent)
+    void OnBeginGameOver(const FString& PlayerName);
+
+    UFUNCTION(BlueprintImplementableEvent)
+    void OnToggleGameMenu();
+
+private:
+
+    void ToggleGameMenu();
+
+protected:
+
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsGameMenuOpen;
 
 };

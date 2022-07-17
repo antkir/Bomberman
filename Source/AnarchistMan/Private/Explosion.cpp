@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Explosion.h"
+
 #include <PlayerCharacter.h>
 #include <Utils.h>
+
 #include <Components/BoxComponent.h>
 
 // Sets default values

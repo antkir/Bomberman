@@ -1,17 +1,20 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "PlayerCharacter.h"
-#include <Utils.h>
-#include <Bomb.h>
-#include <Explosion.h>
+
 #include <AnarchistManGameMode.h>
 #include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
+#include <Bomb.h>
+#include <Explosion.h>
 #include <OverviewCamera.h>
+#include <Utils.h>
+
+#include <Blueprint/UserWidget.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <GameFramework/CharacterMovementComponent.h>
-#include <Blueprint/UserWidget.h>
+#include <Net/UnrealNetwork.h>
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -38,7 +41,6 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	// Bind actions
 	PlayerInputComponent->BindAction("Place Bomb", IE_Pressed, this, &APlayerCharacter::PlaceBomb);
-	PlayerInputComponent->BindAction("Game Menu", IE_Pressed, this, &APlayerCharacter::ToggleGameMenu);
 }
 
 void APlayerCharacter::BlowUp()
@@ -52,15 +54,15 @@ void APlayerCharacter::BlowUp()
     Destroy();
 }
 
-UCameraComponent* APlayerCharacter::GetCameraComponent()
-{
-    return CameraComponent;
-}
-
-// Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+    if (BombClass == nullptr)
+    {
+        UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
+        return;
+    }
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -74,36 +76,20 @@ void APlayerCharacter::Tick(float DeltaTime)
 	CameraComponent->SetWorldLocation(CameraLocation);
 }
 
-void APlayerCharacter::NotifyControllerChanged()
-{
-    Super::NotifyControllerChanged();
-
-    if (IsLocallyControlled())
-    {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(GetController());
-        if (PlayerController->GetViewTarget()->IsA(AOverviewCamera::StaticClass()))
-        {
-            FRotator PawnRotation = GetActorRotation();
-            PlayerController->ClientSetRotation(PawnRotation);
-
-            FViewTargetTransitionParams TransitionParams;
-            TransitionParams.BlendTime = 5.f;
-            TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
-            TransitionParams.BlendExp = 0;
-            TransitionParams.bLockOutgoing = true;
-            PlayerController->ServerSetViewTarget(this, TransitionParams);
-        }
-    }
-}
-
 void APlayerCharacter::OnRep_PlayerState()
 {
     Super::OnRep_PlayerState();
 
     if (GetPlayerState())
     {
-        uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PlayerECCs);
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+
+        uint32 PlayerId = AMPlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
         GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+
+        FColor PlayerColor = AMPlayerState->GetPlayerColor();
+        UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+        MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
     }
 }
 
@@ -113,84 +99,76 @@ void APlayerCharacter::PossessedBy(AController* NewController)
 
 	if (GetPlayerState())
 	{
-		uint32 PlayerId = GetPlayerState()->GetPlayerId() % GetNum(Utils::PlayerECCs);
-		GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+
+        uint32 PlayerId = AMPlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
+        GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+
+        FColor PlayerColor = AMPlayerState->GetPlayerColor();
+        UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+        MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
 	}
 }
 
 void APlayerCharacter::MoveVertical(float Value)
 {
-	if (Value != 0.f) {
-		float Rotation = Value > 0.f ? 90.f : -90.f;
-		Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
+    if (GetPlayerState())
+    {
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        if (AMPlayerState->GetPawnInputState() == PawnInput::DISABLED)
+        {
+            return;
+        }
+    }
 
-		// add movement in that direction
-		AddMovementInput(FVector::YAxisVector, Value);
-	}
+    if (Value != 0.f) {
+        float Rotation = Value > 0.f ? 90.f : -90.f;
+        Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
+
+        // add movement in that direction
+        AddMovementInput(FVector::YAxisVector, Value);
+    }
 }
 
 void APlayerCharacter::MoveHorizontal(float Value)
 {
-	if (Value != 0.f) {
-		float Rotation = Value > 0.f ? 0.f : 180.f;
-		Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
-		
-		// add movement in that direction
-		AddMovementInput(FVector::XAxisVector, Value);
-	}
-}
+    if (GetPlayerState())
+    {
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        if (AMPlayerState->GetPawnInputState() == PawnInput::DISABLED)
+        {
+            return;
+        }
+    }
 
-void APlayerCharacter::ToggleGameMenu()
-{
-	if (GameMenuWidgetClass)
-	{
-		APlayerController* PlayerController = Cast<APlayerController>(GetController());
+    if (Value != 0.f) {
+        float Rotation = Value > 0.f ? 0.f : 180.f;
+        Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
 
-		if (!bGameMenuOpen)
-		{
-			GameMenuWidget = CreateWidget<UUserWidget>(PlayerController, GameMenuWidgetClass);
-			if (GameMenuWidget)
-			{
-				GameMenuWidget->AddToViewport();
-			}
-
-			PlayerController->SetShowMouseCursor(true);
-
-			bGameMenuOpen = true;
-		}
-		else
-		{
-			if (GameMenuWidget)
-			{
-				GameMenuWidget->RemoveFromViewport();
-			}
-
-			PlayerController->SetShowMouseCursor(false);
-
-			bGameMenuOpen = false;
-		}
-	}
-	else
-	{
-		UE_LOG(LogGame, Error, TEXT("GameOverWidgetClass property is not set!"));
-	}
+        // add movement in that direction
+        AddMovementInput(FVector::XAxisVector, Value);
+    }
 }
 
 void APlayerCharacter::PlaceBomb_Implementation()
 {
-	if (BombClass == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
-		return;
-	}
+    if (GetPlayerState())
+    {
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        PawnInput PawnInputState = AMPlayerState->GetPawnInputState();
+        if (PawnInputState == PawnInput::DISABLED || PawnInputState == PawnInput::MOVEMENT_ONLY)
+        {
+            return;
+        }
+    }
 
-	FVector Location = GetActorLocation();
-	Location.X = Utils::RoundUnitCenter(Location.X);
-	Location.Y = Utils::RoundUnitCenter(Location.Y);
-	Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-	FTransform Transform;
-	Transform.SetLocation(Location);
-	Transform.SetRotation(FQuat::Identity);
-	FActorSpawnParameters SpawnParameters;
-	GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
+    FVector Location = GetActorLocation();
+    Location.X = Utils::RoundUnitCenter(Location.X);
+    Location.Y = Utils::RoundUnitCenter(Location.Y);
+    Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
+    FTransform Transform;
+    Transform.SetLocation(Location);
+    Transform.SetRotation(FQuat::Identity);
+    FActorSpawnParameters SpawnParameters;
+    GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+
 #include "AnarchistManGameState.generated.h"
 
 /**
@@ -16,9 +17,7 @@ class AAnarchistManGameState : public AGameStateBase
 
 public:
 
-	AAnarchistManGameState();
-
-public:
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void AddPlayerState(APlayerState* PlayerState) override;
 
@@ -30,14 +29,15 @@ public:
 
 	void SetPlayersAlive(uint64 Num);
 
-	void RoundPlayed();
+    void SetRoundsToWin(uint8 Num);
 
-	uint64 GetRoundsPlayed();
+protected:
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    uint8 RoundsToWin;
 
 private:
 
 	uint64 PlayersAlive;
-
-	uint64 RoundsPlayed;
 	
 };

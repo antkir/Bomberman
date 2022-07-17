@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "LevelGenerator.h"
-#include <Utils.h>
+
 #include <BreakableBlock.h>
+#include <Utils.h>
+
 #include <Kismet/GameplayStatics.h>
 
 // Sets default values
@@ -21,17 +23,15 @@ void ALevelGenerator::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SpawnBreakableBlocks();
+    if (BreakableBlockClass == nullptr)
+    {
+        UE_LOG(LogGame, Error, TEXT("BreakableBlockClass property is not set!"));
+        return;
+    }
 }
 
 void ALevelGenerator::SpawnBreakableBlocks()
 {
-	if (BreakableBlockClass == nullptr)
-	{
-		UE_LOG(LogGame, Error, TEXT("BreakableBlockClass property is not set!"));
-		return;
-	}
-
 	if (!HasAuthority())
 	{
 		return;

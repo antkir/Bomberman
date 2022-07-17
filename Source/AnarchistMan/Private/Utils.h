@@ -12,6 +12,13 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGame, Log, All);
 
+enum PawnInput
+{
+    DISABLED = 0,
+    MOVEMENT_ONLY = 1,
+    ENABLED = 2,
+};
+
 namespace Utils {
 
 constexpr float Unit = 100.f;

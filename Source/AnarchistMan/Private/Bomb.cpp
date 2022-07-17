@@ -1,10 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Bomb.h"
-#include <Utils.h>
+
 #include <BreakableBlock.h>
 #include <Explosion.h>
 #include <PlayerCharacter.h>
+#include <Utils.h>
+
 #include <Components/BoxComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <Net/UnrealNetwork.h>
@@ -60,6 +62,12 @@ void ABomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimePro
 void ABomb::BeginPlay()
 {
 	Super::BeginPlay();
+
+    if (ExplosionClass == nullptr)
+    {
+        UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
+        return;
+    }
 
 	SetLifeSpan(LifeSpan);
 
@@ -132,11 +140,6 @@ void ABomb::LifeSpanExpired()
 
 void ABomb::BlowUp()
 {
-	if (ExplosionClass == nullptr)
-	{
-		UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
-		return;
-	}
 
 	if (!HasAuthority())
 	{

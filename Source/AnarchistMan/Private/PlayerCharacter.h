@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+
 #include "PlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -22,24 +23,19 @@ public:
 public:
 
 	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void BlowUp();
 
-	UCameraComponent* GetCameraComponent();
-
 protected:
 
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	void BeginPlay() override;
 
-	virtual void Tick(float DeltaTime) override;
+	void Tick(float DeltaTime) override;
 
-	virtual void NotifyControllerChanged() override;
+	void OnRep_PlayerState() override;
 
-	virtual void OnRep_PlayerState() override;
-
-	virtual void PossessedBy(AController* NewController) override;
+	void PossessedBy(AController* NewController) override;
 
 private:
 
@@ -49,11 +45,10 @@ private:
 	/** Handles strafing movement, left and right */
 	void MoveHorizontal(float Val);
 
-	/** Bomb placing */
-	UFUNCTION(Server, Reliable)
-	void PlaceBomb();
-
 	void ToggleGameMenu();
+
+    UFUNCTION(Server, Reliable)
+    void PlaceBomb();
 
 protected:
 
@@ -65,14 +60,5 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<ABomb> BombClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
-	TSubclassOf<UUserWidget> GameMenuWidgetClass;
-
-private:
-
-	bool bGameMenuOpen;
-
-	UUserWidget* GameMenuWidget;
 
 };

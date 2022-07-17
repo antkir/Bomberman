@@ -2,8 +2,11 @@
 
 #pragma once
 
+#include "Utils.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+
 #include "AnarchistManPlayerState.generated.h"
 
 /**
@@ -16,16 +19,44 @@ class AAnarchistManPlayerState : public APlayerState
 
 public:
 
-	void RoundWin();
-
-	uint64 GetRoundWins();
+    AAnarchistManPlayerState();
 
 public:
 
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    void SetPlayerDead();
+
+    void SetPlayerAlive();
+
+    bool IsDead();
+
+    void WinRound();
+
+    uint8 GetRoundWins();
+
+    void ResetRoundWins();
+
+    void SetPlayerColor(FColor Color);
+
+    FColor GetPlayerColor();
+
+    void SetPawnInputState(PawnInput InputState);
+
+    PawnInput GetPawnInputState();
+
+protected:
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead;
 
-private:
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    uint8 PawnInputState;
 
-	uint64 RoundWins;
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    uint8 RoundWins;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    FColor PlayerColor;
 	
 };
