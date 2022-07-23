@@ -2,12 +2,9 @@
 
 #include "PlayerCharacter.h"
 
-#include <AnarchistManGameMode.h>
-#include <AnarchistManPlayerController.h>
+#include <AnarchistManGameState.h>
 #include <AnarchistManPlayerState.h>
 #include <Bomb.h>
-#include <Explosion.h>
-#include <OverviewCamera.h>
 #include <Utils.h>
 
 #include <Blueprint/UserWidget.h>
@@ -43,15 +40,11 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction("Place Bomb", IE_Pressed, this, &APlayerCharacter::PlaceBomb);
 }
 
-void APlayerCharacter::BlowUp()
+void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    auto* PlayerController = Cast<APlayerController>(GetController());
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    auto* GameMode = Cast<AAnarchistManGameMode>(GetWorld()->GetAuthGameMode());
-    GameMode->PlayerDeath(PlayerController);
-
-    PlayerController->UnPossess();
-    Destroy();
+    DOREPLIFETIME(APlayerCharacter, InputState);
 }
 
 void APlayerCharacter::BeginPlay()
@@ -107,15 +100,48 @@ void APlayerCharacter::PossessedBy(AController* NewController)
         FColor PlayerColor = AMPlayerState->GetPlayerColor();
         UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
         MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
+
+        AMPlayerState->SetActiveBombsLimit(3);
+        AMPlayerState->SetActiveBombsCount(0);
 	}
+}
+
+bool APlayerCharacter::HasOwnExplosionVisualEffect_Implementation()
+{
+    return false;
+}
+
+void APlayerCharacter::BlowUp_Implementation()
+{
+    if (!IsValid(this))
+    {
+        return;
+    }
+
+    auto* AMGameState = GetWorld()->GetGameState<AAnarchistManGameState>();
+    if (AMGameState->PlayerArray.Num() > 1 && AMGameState->GetPlayersAlive() == 1)
+    {
+        return;
+    }
+
+    auto* PlayerController = Cast<APlayerController>(GetController());
+    PlayerController->UnPossess();
+
+    Destroy();
+
+    OnPlayerCharacterDeath.Broadcast(PlayerController);
+}
+
+void APlayerCharacter::SetPawnInputState(EPawnInput PawnInput)
+{
+    InputState = PawnInput;
 }
 
 void APlayerCharacter::MoveVertical(float Value)
 {
     if (GetPlayerState())
     {
-        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        if (AMPlayerState->GetPawnInputState() == PawnInput::DISABLED)
+        if (InputState == EPawnInput::DISABLED)
         {
             return;
         }
@@ -134,8 +160,7 @@ void APlayerCharacter::MoveHorizontal(float Value)
 {
     if (GetPlayerState())
     {
-        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        if (AMPlayerState->GetPawnInputState() == PawnInput::DISABLED)
+        if (InputState == EPawnInput::DISABLED)
         {
             return;
         }
@@ -150,16 +175,64 @@ void APlayerCharacter::MoveHorizontal(float Value)
     }
 }
 
+void APlayerCharacter::OnBombExploded()
+{
+    auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+    uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+    AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+}
+
+bool APlayerCharacter::CanPlaceBomb()
+{
+    bool CanPlaceBomb = true;
+
+    if (GetPlayerState())
+    {
+        if (InputState == EPawnInput::DISABLED || InputState == EPawnInput::MOVEMENT_ONLY)
+        {
+            CanPlaceBomb = false;
+        }
+
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        if (!AMPlayerState->CanPlaceBomb())
+        {
+            CanPlaceBomb = false;
+        }
+    }
+
+    TArray<FOverlapResult> OutOverlaps{};
+    FVector Location = GetActorLocation();
+    Location.X = Utils::RoundUnitCenter(Location.X);
+    Location.Y = Utils::RoundUnitCenter(Location.Y);
+    Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
+    Location.Z = Utils::RoundUnitCenter(Location.Z);
+    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 20));
+    GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
+
+    for (const FOverlapResult& Overlap : OutOverlaps)
+    {
+        auto* Bomb = Cast<ABomb>(Overlap.GetActor());
+        if (Bomb)
+        {
+            CanPlaceBomb = false;
+        }
+    }
+
+    return CanPlaceBomb;
+}
+
 void APlayerCharacter::PlaceBomb_Implementation()
 {
+    if (!CanPlaceBomb())
+    {
+        return;
+    }
+
     if (GetPlayerState())
     {
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        PawnInput PawnInputState = AMPlayerState->GetPawnInputState();
-        if (PawnInputState == PawnInput::DISABLED || PawnInputState == PawnInput::MOVEMENT_ONLY)
-        {
-            return;
-        }
+        uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+        AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
     }
 
     FVector Location = GetActorLocation();
@@ -170,5 +243,6 @@ void APlayerCharacter::PlaceBomb_Implementation()
     Transform.SetLocation(Location);
     Transform.SetRotation(FQuat::Identity);
     FActorSpawnParameters SpawnParameters;
-    GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
+    ABomb* Bomb = GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
+    Bomb->OnBombExploded.AddDynamic(this, &APlayerCharacter::OnBombExploded);
 }

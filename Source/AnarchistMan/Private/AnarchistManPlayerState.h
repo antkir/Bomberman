@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "Utils.h"
-
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 
@@ -41,9 +39,13 @@ public:
 
     FColor GetPlayerColor();
 
-    void SetPawnInputState(PawnInput InputState);
+    void SetActiveBombsCount(uint32 Count);
 
-    PawnInput GetPawnInputState();
+    uint32 GetActiveBombsCount();
+
+    void SetActiveBombsLimit(uint32 Limit);
+
+    bool CanPlaceBomb();
 
 protected:
 
@@ -51,12 +53,15 @@ protected:
 	bool bIsDead;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
-    uint8 PawnInputState;
-
-    UPROPERTY(Replicated, BlueprintReadOnly)
     uint8 RoundWins;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
     FColor PlayerColor;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    int64 ActiveBombsCount;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    int64 ActiveBombsLimit;
 	
 };

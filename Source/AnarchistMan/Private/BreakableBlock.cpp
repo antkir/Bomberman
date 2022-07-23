@@ -31,3 +31,13 @@ void ABreakableBlock::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponen
 		Destroy();
 	}
 }
+
+bool ABreakableBlock::HasOwnExplosionVisualEffect_Implementation()
+{
+    return false;
+}
+
+void ABreakableBlock::BlowUp_Implementation()
+{
+    Destroy();
+}

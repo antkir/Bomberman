@@ -7,6 +7,7 @@
 
 #include "AnarchistManGameMode.generated.h"
 
+class AAnarchistManPlayerController;
 class AAnarchistManPlayerState;
 class UUserWidget;
 
@@ -36,6 +37,11 @@ public:
 
     UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
     void RestartGame();
+
+    APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
+
+    UFUNCTION()
+    void OnPlayerCharacterDeath(APlayerController* PlayerController);
 
 private:
 

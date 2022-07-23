@@ -2,13 +2,15 @@
 
 #pragma once
 
+#include "ExplosiveInterface.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
 #include "BreakableBlock.generated.h"
 
 UCLASS()
-class ABreakableBlock : public AActor
+class ABreakableBlock : public AActor, public IExplosiveInterface
 {
 	GENERATED_BODY()
 	
@@ -19,6 +21,12 @@ public:
 
 	UFUNCTION()
 	void HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+protected:
+
+    bool HasOwnExplosionVisualEffect_Implementation() override;
+
+    void BlowUp_Implementation() override;
 
 protected:
 

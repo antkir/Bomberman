@@ -100,7 +100,6 @@ void AAnarchistManGameMode::PostLogin(APlayerController* NewPlayer)
     auto* AMPlayerState = PlayerController->GetPlayerState<AAnarchistManPlayerState>();
     FColor PlayerColor = Utils::PlayerColors[PlayerId];
     AMPlayerState->SetPlayerColor(PlayerColor);
-    AMPlayerState->SetPawnInputState(PawnInput::MOVEMENT_ONLY);
 
     AActor* LevelObserverCamera = UGameplayStatics::GetActorOfClass(this, LevelObserverCameraClass);
     if (LevelObserverCamera)
@@ -241,6 +240,35 @@ void AAnarchistManGameMode::RestartGame()
     BeginPreGame();
 }
 
+APawn* AAnarchistManGameMode::SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot)
+{
+    // Don't allow pawn to be spawned with any pitch or roll
+    FRotator StartRotation(ForceInit);
+    StartRotation.Yaw = StartSpot->GetActorRotation().Yaw;
+    FVector StartLocation = StartSpot->GetActorLocation();
+    
+    FTransform Transform = FTransform(StartRotation, StartLocation);
+    APawn* Pawn = SpawnDefaultPawnAtTransform(NewPlayer, Transform);
+
+    auto* PlayerCharacter = Cast<APlayerCharacter>(Pawn);
+    PlayerCharacter->OnPlayerCharacterDeath.AddDynamic(this, &AAnarchistManGameMode::OnPlayerCharacterDeath);
+    if (CurrentMatchState == MatchState::Lobby)
+    {
+        PlayerCharacter->SetPawnInputState(EPawnInput::MOVEMENT_ONLY);
+    }
+    else
+    {
+        PlayerCharacter->SetPawnInputState(EPawnInput::DISABLED);
+    }
+
+    return PlayerCharacter;
+}
+
+void AAnarchistManGameMode::OnPlayerCharacterDeath(APlayerController* PlayerController)
+{
+    PlayerDeath(PlayerController);
+}
+
 void AAnarchistManGameMode::BeginPreGame()
 {
     CurrentMatchState = MatchState::PreGame;
@@ -266,7 +294,6 @@ void AAnarchistManGameMode::BeginPreGame()
     {
         auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
         AMPlayerState->SetPlayerAlive();
-        AMPlayerState->SetPawnInputState(PawnInput::DISABLED);
 
         auto* PlayerController = Cast<AAnarchistManPlayerController>(AMPlayerState->GetPlayerController());
         APawn* Pawn = PlayerController->GetPawn();
@@ -277,6 +304,8 @@ void AAnarchistManGameMode::BeginPreGame()
         }
 
         RestartPlayer(PlayerController);
+
+        PlayerController->ClientSetRotation(FRotator(0.f, 90.f, 0.f));
     }
 
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
@@ -323,8 +352,9 @@ void AAnarchistManGameMode::BeginGame()
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
-        AMPlayerState->SetPawnInputState(PawnInput::ENABLED);
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
+        auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
+        PlayerCharacter->SetPawnInputState(EPawnInput::ENABLED);
     }
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)

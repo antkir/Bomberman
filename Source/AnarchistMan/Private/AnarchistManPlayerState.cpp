@@ -14,9 +14,10 @@ void AAnarchistManPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProper
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(AAnarchistManPlayerState, bIsDead);
-    DOREPLIFETIME(AAnarchistManPlayerState, PawnInputState);
     DOREPLIFETIME(AAnarchistManPlayerState, RoundWins);
     DOREPLIFETIME(AAnarchistManPlayerState, PlayerColor);
+    DOREPLIFETIME(AAnarchistManPlayerState, ActiveBombsCount);
+    DOREPLIFETIME(AAnarchistManPlayerState, ActiveBombsLimit);
 }
 
 void AAnarchistManPlayerState::SetPlayerDead()
@@ -59,12 +60,22 @@ FColor AAnarchistManPlayerState::GetPlayerColor()
     return PlayerColor;
 }
 
-void AAnarchistManPlayerState::SetPawnInputState(PawnInput InputState)
+void AAnarchistManPlayerState::SetActiveBombsCount(uint32 Count)
 {
-    PawnInputState = InputState;
+    ActiveBombsCount = Count;
 }
 
-PawnInput AAnarchistManPlayerState::GetPawnInputState()
+uint32 AAnarchistManPlayerState::GetActiveBombsCount()
 {
-    return static_cast<PawnInput>(PawnInputState);
+    return ActiveBombsCount;
+}
+
+void AAnarchistManPlayerState::SetActiveBombsLimit(uint32 Limit)
+{
+    ActiveBombsLimit = Limit;
+}
+
+bool AAnarchistManPlayerState::CanPlaceBomb()
+{
+    return ActiveBombsCount < ActiveBombsLimit;
 }

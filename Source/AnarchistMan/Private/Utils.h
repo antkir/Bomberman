@@ -12,11 +12,12 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGame, Log, All);
 
-enum PawnInput
+UENUM(BlueprintType)
+enum class EPawnInput : uint8
 {
-    DISABLED = 0,
-    MOVEMENT_ONLY = 1,
-    ENABLED = 2,
+    DISABLED UMETA(DisplayName = "Disabled"),
+    MOVEMENT_ONLY UMETA(DisplayName = "Movement Only"),
+    ENABLED UMETA(DisplayName = "Enabled"),
 };
 
 namespace Utils {
@@ -55,8 +56,9 @@ inline uint32 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
 	case ECC_Pawn3:
 		return 4;
 	case ECC_Pawn4:
+        return 8;
 	default:
-		return 8;
+		return 0;
 	}
 }
 

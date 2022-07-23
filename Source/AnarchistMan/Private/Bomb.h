@@ -2,15 +2,20 @@
 
 #pragma once
 
+#include "ExplosiveInterface.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "Bomb.generated.h"
 
 class AExplosion;
 class UBoxComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBombExploded);
+
 UCLASS()
-class ABomb : public AActor
+class ABomb : public AActor, public IExplosiveInterface
 {
 	GENERATED_BODY()
 	
@@ -30,13 +35,21 @@ protected:
 	UFUNCTION()
 	void OnRep_BlockPawns();
 
+    bool HasOwnExplosionVisualEffect_Implementation() override;
+
+    void BlowUp_Implementation() override;
+
 private:
 
 	void LifeSpanExpired() override;
 
-	void BlowUp();
+	void Explode();
 
 	uint32 LineTraceExplosion(FVector Start, FVector End);
+
+public:
+
+    FBombExploded OnBombExploded;
 
 protected:
 

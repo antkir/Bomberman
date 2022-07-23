@@ -2,7 +2,6 @@
 
 #include "Bomb.h"
 
-#include <BreakableBlock.h>
 #include <Explosion.h>
 #include <PlayerCharacter.h>
 #include <Utils.h>
@@ -92,10 +91,10 @@ void ABomb::BeginPlay()
 
 		for (const FOverlapResult& Overlap : OutOverlaps)
 		{
-			auto* PC = Cast<APlayerCharacter>(Overlap.GetActor());
-			if (PC)
+			auto* PlayerCharacter = Cast<APlayerCharacter>(Overlap.GetActor());
+			if (PlayerCharacter)
 			{
-				ECollisionChannel PlayerCollisionChannel = PC->GetCapsuleComponent()->GetCollisionObjectType();
+				ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
 				BlockPawnsMask ^= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
 			}
 		}
@@ -108,10 +107,10 @@ void ABomb::BeginPlay()
 
 void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
-	if (Character)
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(OtherActor);
+	if (PlayerCharacter)
 	{
-		ECollisionChannel PlayerCollisionChannel = Character->GetCapsuleComponent()->GetCollisionObjectType();
+		ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
 		BlockPawnsMask |= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
 	}
 	OnRep_BlockPawns();
@@ -132,15 +131,31 @@ void ABomb::OnRep_BlockPawns()
 	}
 }
 
-void ABomb::LifeSpanExpired()
+bool ABomb::HasOwnExplosionVisualEffect_Implementation()
 {
-	BlowUp();
-	Destroy();
+    return true;
 }
 
-void ABomb::BlowUp()
+void ABomb::BlowUp_Implementation()
 {
+    if (ExplosionTriggered)
+    {
+        return;
+    }
 
+    Explode();
+    Destroy();
+
+    OnBombExploded.Broadcast();
+}
+
+void ABomb::LifeSpanExpired()
+{
+    BlowUp_Implementation();
+}
+
+void ABomb::Explode()
+{
 	if (!HasAuthority())
 	{
 		return;
@@ -265,29 +280,27 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 				continue;
 			}
 
-			if (Actor->IsA(ABomb::StaticClass()))
-			{
-				ABomb* Bomb = Cast<ABomb>(Actor);
-				if (Bomb != this && !Bomb->ExplosionTriggered)
-				{
-					Bomb->BlowUp();
-					Bomb->Destroy();
+            auto* ExplosiveInterface = Cast<IExplosiveInterface>(Actor);
 
-					float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
-					BlockingDistance = static_cast<uint32>(DistanceRounded);
+            if (Actor->Implements<UExplosiveInterface>())
+            {
+                if (Actor != this)
+                {
+                    float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+                    if (IExplosiveInterface::Execute_HasOwnExplosionVisualEffect(Actor))
+                    {
+                        BlockingDistance = static_cast<uint32>(DistanceRounded);
+                    }
+                    else
+                    {
+                        BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
+                    }
 
-					break;
-				}
-			}
-			else if (Actor->IsA(ABreakableBlock::StaticClass()))
-			{
-				Actor->Destroy();
+                    IExplosiveInterface::Execute_BlowUp(Actor);
 
-				float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
-				BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
-
-				break;
-			}
+                    break;
+                }
+            }
 		}
 		else
 		{

@@ -58,6 +58,6 @@ void AExplosion::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
 	if (Character)
 	{
-		Character->BlowUp();
+		Character->BlowUp_Implementation();
 	}
 }

@@ -2,9 +2,6 @@
 
 #include "AnarchistManPlayerController.h"
 
-#include <AnarchistManGameMode.h>
-#include <PlayerCharacter.h>
-
 #include <Blueprint/UserWidget.h>
 #include <Net/UnrealNetwork.h>
 

@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "ExplosiveInterface.h"
+#include "Utils.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 
@@ -10,8 +13,14 @@
 class UCameraComponent;
 class ABomb;
 
+/**
+ * @brief Delegate executed when a player dies from a bomb explosion.
+ * @param PlayerController.
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPlayerCharacterDeath, APlayerController*, PlayerController);
+
 UCLASS()
-class APlayerCharacter : public ACharacter
+class APlayerCharacter : public ACharacter, public IExplosiveInterface
 {
 	GENERATED_BODY()
 
@@ -25,7 +34,13 @@ public:
 	// Called to bind functionality to input
 	void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void BlowUp();
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    bool HasOwnExplosionVisualEffect_Implementation() override;
+
+    void BlowUp_Implementation() override;
+
+    void SetPawnInputState(EPawnInput PawnInput);
 
 protected:
 
@@ -50,6 +65,15 @@ private:
     UFUNCTION(Server, Reliable)
     void PlaceBomb();
 
+    UFUNCTION()
+    void OnBombExploded();
+
+    bool CanPlaceBomb();
+
+public:
+
+    FPlayerCharacterDeath OnPlayerCharacterDeath;
+
 protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
@@ -60,5 +84,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<ABomb> BombClass;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    EPawnInput InputState;
 
 };
