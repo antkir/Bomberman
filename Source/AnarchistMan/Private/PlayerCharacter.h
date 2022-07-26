@@ -40,7 +40,9 @@ public:
 
     void BlowUp_Implementation() override;
 
-    void SetPawnInputState(EPawnInput PawnInput);
+    void SetInputEnabled(bool InputEnabled);
+
+    void SetInvincible(bool Invincible);
 
 protected:
 
@@ -86,6 +88,9 @@ protected:
 	TSubclassOf<ABomb> BombClass;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
-    EPawnInput InputState;
+    bool bInputEnabled;
+
+    UPROPERTY(Replicated, BlueprintReadOnly)
+    bool bInvincible;
 
 };

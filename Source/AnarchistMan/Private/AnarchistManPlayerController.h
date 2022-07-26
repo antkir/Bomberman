@@ -50,6 +50,9 @@ protected:
     void OnBeginRoundOver(const FString& PlayerName);
 
     UFUNCTION(BlueprintImplementableEvent)
+    void OnBeginRoundDraw();
+
+    UFUNCTION(BlueprintImplementableEvent)
     void OnBeginGameOver(const FString& PlayerName);
 
     UFUNCTION(BlueprintImplementableEvent)

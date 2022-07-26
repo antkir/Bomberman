@@ -55,8 +55,6 @@ private:
 
 	void BeginGameOver(FString PlayerName);
 
-    void OnGameOverTimeout();
-
     inline FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime);
 
 protected:
@@ -70,11 +68,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Properties")
 	TSubclassOf<AActor> LevelObserverCameraClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-	float GameOverTimeout;
+    UPROPERTY(EditDefaultsOnly, Category = "Properties")
+    float RoundCountdownTime;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Properties")
+    float CameraBlendTime;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Properties")
+    float DrawTimeThreshold;
 
 private:
 
-	FTimerHandle TimerHandle;
+    uint32 RecentDeaths;
 	
 };

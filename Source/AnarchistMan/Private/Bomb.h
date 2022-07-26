@@ -43,7 +43,9 @@ private:
 
 	void LifeSpanExpired() override;
 
-	void Explode();
+	void StartExplosion();
+
+    void ExplodeTile(FTransform Transform);
 
 	uint32 LineTraceExplosion(FVector Start, FVector End);
 
@@ -69,21 +71,23 @@ protected:
 	TSubclassOf<AExplosion> ExplosionClass;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
-	uint64 RadiusBlocks;
+	uint64 ExplosionConstraintBlocks;
 
-	/** A Replicated Boolean Flag */
 	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
 	uint8 BlockPawnsMask;
 
+    UPROPERTY(EditAnywhere, Category = "Parameters")
+    float TileExplosionDelay;
+
 private:
 
-	struct
+	struct ExplosionConstraints
 	{
 		uint64 Right;
 		uint64 Left;
 		uint64 Up;
 		uint64 Down;
-	} ExplosionConstraints;
+	};
 
 	bool ExplosionTriggered;
 

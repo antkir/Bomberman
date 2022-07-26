@@ -12,14 +12,6 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGame, Log, All);
 
-UENUM(BlueprintType)
-enum class EPawnInput : uint8
-{
-    DISABLED UMETA(DisplayName = "Disabled"),
-    MOVEMENT_ONLY UMETA(DisplayName = "Movement Only"),
-    ENABLED UMETA(DisplayName = "Enabled"),
-};
-
 namespace Utils {
 
 constexpr float Unit = 100.f;

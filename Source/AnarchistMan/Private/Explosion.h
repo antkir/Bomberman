@@ -24,19 +24,13 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UFUNCTION()
-	void HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
 protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UBoxComponent* OverlapComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
-	USkeletalMeshComponent* MeshComponent;
-
-	UPROPERTY(EditAnywhere, Category = "Parameters")
-	UAnimSequence* IdleAnimation;
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    UParticleSystemComponent* ParticleSystemComponent;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float LifeSpan;

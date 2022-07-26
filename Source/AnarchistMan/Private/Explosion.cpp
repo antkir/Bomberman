@@ -6,6 +6,7 @@
 #include <Utils.h>
 
 #include <Components/BoxComponent.h>
+#include <Particles/ParticleSystemComponent.h>
 
 // Sets default values
 AExplosion::AExplosion()
@@ -21,14 +22,9 @@ AExplosion::AExplosion()
 	// Set as root component
 	RootComponent = OverlapComponent;
 
-	// Create a mesh component
-	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponent"));
-
-	// Set the component's mesh
-	USkeletalMesh* ExplosionMesh = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Engine/EngineMeshes/SkeletalCube'")).Object;
-	MeshComponent->SetSkeletalMesh(ExplosionMesh);
-
-	MeshComponent->SetupAttachment(RootComponent);
+    // Create a particle system component
+    ParticleSystemComponent = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ParticleSystemComponent"));
+    ParticleSystemComponent->SetupAttachment(RootComponent);
 
 	LifeSpan = 1.f;
 }
@@ -39,25 +35,4 @@ void AExplosion::BeginPlay()
 	Super::BeginPlay();
 
 	SetLifeSpan(LifeSpan);
-
-	if (IdleAnimation)
-	{
-		MeshComponent->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		MeshComponent->SetAnimation(IdleAnimation);
-		MeshComponent->Play(true);
-	}
-
-	if (HasAuthority())
-	{
-		OverlapComponent->OnComponentBeginOverlap.AddDynamic(this, &AExplosion::HandleBeginOverlap);
-	}
-}
-
-void AExplosion::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
-	if (Character)
-	{
-		Character->BlowUp_Implementation();
-	}
 }

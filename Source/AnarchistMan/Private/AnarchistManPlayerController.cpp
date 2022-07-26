@@ -37,7 +37,14 @@ void AAnarchistManPlayerController::BeginRoundOver_Implementation(const FString&
 {
     if (IsLocalController())
     {
-        OnBeginRoundOver(PlayerName);
+        if (!PlayerName.IsEmpty())
+        {
+            OnBeginRoundOver(PlayerName);
+        }
+        else
+        {
+            OnBeginRoundDraw();
+        }
     }
 }
 

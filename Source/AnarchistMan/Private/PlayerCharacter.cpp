@@ -25,6 +25,9 @@ APlayerCharacter::APlayerCharacter()
 
 	CameraComponent->SetUsingAbsoluteLocation(true);
 	CameraComponent->SetUsingAbsoluteRotation(true);
+
+    bInputEnabled = true;
+    bInvincible = true;
 }
 
 // Called to bind functionality to input
@@ -44,7 +47,8 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(APlayerCharacter, InputState);
+    DOREPLIFETIME(APlayerCharacter, bInputEnabled);
+    DOREPLIFETIME(APlayerCharacter, bInvincible);
 }
 
 void APlayerCharacter::BeginPlay()
@@ -113,13 +117,7 @@ bool APlayerCharacter::HasOwnExplosionVisualEffect_Implementation()
 
 void APlayerCharacter::BlowUp_Implementation()
 {
-    if (!IsValid(this))
-    {
-        return;
-    }
-
-    auto* AMGameState = GetWorld()->GetGameState<AAnarchistManGameState>();
-    if (AMGameState->PlayerArray.Num() > 1 && AMGameState->GetPlayersAlive() == 1)
+    if (!IsValid(this) || bInvincible)
     {
         return;
     }
@@ -132,19 +130,21 @@ void APlayerCharacter::BlowUp_Implementation()
     OnPlayerCharacterDeath.Broadcast(PlayerController);
 }
 
-void APlayerCharacter::SetPawnInputState(EPawnInput PawnInput)
+void APlayerCharacter::SetInputEnabled(bool InputEnabled)
 {
-    InputState = PawnInput;
+    bInputEnabled = InputEnabled;
+}
+
+void APlayerCharacter::SetInvincible(bool Invincible)
+{
+    bInvincible = Invincible;
 }
 
 void APlayerCharacter::MoveVertical(float Value)
 {
-    if (GetPlayerState())
+    if (!bInputEnabled)
     {
-        if (InputState == EPawnInput::DISABLED)
-        {
-            return;
-        }
+        return;
     }
 
     if (Value != 0.f) {
@@ -158,12 +158,9 @@ void APlayerCharacter::MoveVertical(float Value)
 
 void APlayerCharacter::MoveHorizontal(float Value)
 {
-    if (GetPlayerState())
+    if (!bInputEnabled)
     {
-        if (InputState == EPawnInput::DISABLED)
-        {
-            return;
-        }
+        return;
     }
 
     if (Value != 0.f) {
@@ -188,11 +185,6 @@ bool APlayerCharacter::CanPlaceBomb()
 
     if (GetPlayerState())
     {
-        if (InputState == EPawnInput::DISABLED || InputState == EPawnInput::MOVEMENT_ONLY)
-        {
-            CanPlaceBomb = false;
-        }
-
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
         if (!AMPlayerState->CanPlaceBomb())
         {

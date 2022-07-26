@@ -34,18 +34,12 @@ ABomb::ABomb()
 	MeshComponent->SetupAttachment(RootComponent);
 
 	LifeSpan = 3.f;
-	RadiusBlocks = 2;
 
-	ExplosionConstraints = {
-		RadiusBlocks,
-		RadiusBlocks,
-		RadiusBlocks,
-		RadiusBlocks
-	};
-
-	ExplosionTriggered = false;
+    ExplosionConstraintBlocks = 3;
 
 	BlockPawnsMask = 0b1111;
+
+    TileExplosionDelay = 0.1f;
 }
 
 void ABomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -143,7 +137,7 @@ void ABomb::BlowUp_Implementation()
         return;
     }
 
-    Explode();
+    StartExplosion();
     Destroy();
 
     OnBombExploded.Broadcast();
@@ -154,7 +148,7 @@ void ABomb::LifeSpanExpired()
     BlowUp_Implementation();
 }
 
-void ABomb::Explode()
+void ABomb::StartExplosion()
 {
 	if (!HasAuthority())
 	{
@@ -163,103 +157,163 @@ void ABomb::Explode()
 
 	ExplosionTriggered = true;
 
+    ExplosionConstraints Constraints {
+        ExplosionConstraintBlocks,
+        ExplosionConstraintBlocks,
+        ExplosionConstraintBlocks,
+        ExplosionConstraintBlocks
+    };
+
 	// Right
 	{
 		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
-		End.X = Utils::RoundUnitCenter(End.X) + Utils::Unit * RadiusBlocks;
+		End.X = Utils::RoundUnitCenter(End.X) + Utils::Unit * ExplosionConstraintBlocks;
 
 		uint64 Constraint = LineTraceExplosion(Start, End);
-		ExplosionConstraints.Right = std::min(ExplosionConstraints.Down, Constraint);
+        Constraints.Right = std::min(Constraints.Right, Constraint);
 	}
 
 	// Left
 	{
 		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
-		End.X = Utils::RoundUnitCenter(End.X) - Utils::Unit * RadiusBlocks;
+		End.X = Utils::RoundUnitCenter(End.X) - Utils::Unit * ExplosionConstraintBlocks;
 
 		uint64 Constraint = LineTraceExplosion(Start, End);
-		ExplosionConstraints.Left = std::min(ExplosionConstraints.Down, Constraint);
+        Constraints.Left = std::min(Constraints.Left, Constraint);
 	}
 
 	// Up
 	{
 		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
-		End.Y = Utils::RoundUnitCenter(End.Y) - Utils::Unit * RadiusBlocks;
+		End.Y = Utils::RoundUnitCenter(End.Y) - Utils::Unit * ExplosionConstraintBlocks;
 
 		uint64 Constraint = LineTraceExplosion(Start, End);
-		ExplosionConstraints.Up = std::min(ExplosionConstraints.Down, Constraint);
+        Constraints.Up = std::min(Constraints.Up, Constraint);
 	}
 
 	// Down
 	{
 		FVector Start = GetActorLocation();
 		FVector End = GetActorLocation();
-		End.Y = Utils::RoundUnitCenter(End.Y) + Utils::Unit * RadiusBlocks;
+		End.Y = Utils::RoundUnitCenter(End.Y) + Utils::Unit * ExplosionConstraintBlocks;
 
 		uint64 Constraint = LineTraceExplosion(Start, End);
-		ExplosionConstraints.Down = std::min(ExplosionConstraints.Down, Constraint);
+        Constraints.Down = std::min(Constraints.Down, Constraint);
 	}
 
 	{
-		FVector Location = GetActorLocation();
 		FTransform Transform;
 		Transform.SetLocation(GetActorLocation());
 		Transform.SetRotation(FQuat::Identity);
-		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
+
+        ExplodeTile(Transform);
 	}
 
-	for (uint8 Index = 1; Index <= ExplosionConstraints.Right; Index++)
-	{
-		// Right
-		FVector Location = GetActorLocation();
-		Location.X = Utils::RoundUnitCenter(Location.X) + Utils::Unit * Index;
-		Location.Y = Utils::RoundUnitCenter(Location.Y);
-		FTransform Transform;
-		Transform.SetLocation(Location);
-		Transform.SetRotation(FQuat::Identity);
-		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
-	}
+    for (uint8 Index = 1; Index < Constraints.Right; Index++)
+    {
+        // Right
+        FVector Location = GetActorLocation();
+        Location.X = Utils::RoundUnitCenter(Location.X) + Utils::Unit * Index;
+        Location.Y = Utils::RoundUnitCenter(Location.Y);
+        FTransform Transform;
+        Transform.SetLocation(Location);
+        Transform.SetRotation(FQuat::Identity);
 
-	for (uint8 Index = 1; Index <= ExplosionConstraints.Left; Index++)
-	{
-		// Left
-		FVector Location = GetActorLocation();
-		Location.X = Utils::RoundUnitCenter(Location.X) - Utils::Unit * Index;
-		Location.Y = Utils::RoundUnitCenter(Location.Y);
-		FTransform Transform;
-		Transform.SetLocation(Location);
-		Transform.SetRotation(FQuat::Identity);
-		GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
-	}
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        {
+            ExplodeTile(Transform);
+        }, TileExplosionDelay * Index, false);
+    }
 
-	for (uint8 Index = 1; Index <= ExplosionConstraints.Up; Index++)
-	{
-		// Up
-		FVector Location = GetActorLocation();
-		Location.X = Utils::RoundUnitCenter(Location.X);
-		Location.Y = Utils::RoundUnitCenter(Location.Y) - Utils::Unit * Index;
-		FTransform Transform;
-		Transform.SetLocation(Location);
-		Transform.SetRotation(FQuat::Identity);
-		GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
-	}
+    for (uint8 Index = 1; Index < Constraints.Left; Index++)
+    {
+        // Left
+        FVector Location = GetActorLocation();
+        Location.X = Utils::RoundUnitCenter(Location.X) - Utils::Unit * Index;
+        Location.Y = Utils::RoundUnitCenter(Location.Y);
+        FTransform Transform;
+        Transform.SetLocation(Location);
+        Transform.SetRotation(FQuat::Identity);
 
-	for (uint8 Index = 1; Index <= ExplosionConstraints.Down; Index++)
-	{
-		// Down
-		{
-			FVector Location = GetActorLocation();
-			Location.X = Utils::RoundUnitCenter(Location.X);
-			Location.Y = Utils::RoundUnitCenter(Location.Y) + Utils::Unit * Index;
-			FTransform Transform;
-			Transform.SetLocation(Location);
-			Transform.SetRotation(FQuat::Identity);
-			GetWorld()->SpawnActorAbsolute<AExplosion>(ExplosionClass, Transform);
-		}
-	}
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        {
+            ExplodeTile(Transform);
+        }, TileExplosionDelay * Index, false);
+    }
+
+    for (uint8 Index = 1; Index < Constraints.Up; Index++)
+    {
+        // Up
+        FVector Location = GetActorLocation();
+        Location.X = Utils::RoundUnitCenter(Location.X);
+        Location.Y = Utils::RoundUnitCenter(Location.Y) - Utils::Unit * Index;
+        FTransform Transform;
+        Transform.SetLocation(Location);
+        Transform.SetRotation(FQuat::Identity);
+
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        {
+            ExplodeTile(Transform);
+        }, TileExplosionDelay * Index, false);
+    }
+
+    for (uint8 Index = 1; Index < Constraints.Down; Index++)
+    {
+        // Down
+        FVector Location = GetActorLocation();
+        Location.X = Utils::RoundUnitCenter(Location.X);
+        Location.Y = Utils::RoundUnitCenter(Location.Y) + Utils::Unit * Index;
+        FTransform Transform;
+        Transform.SetLocation(Location);
+        Transform.SetRotation(FQuat::Identity);
+
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        {
+            ExplodeTile(Transform);
+        }, TileExplosionDelay * Index, false);
+    }
+}
+
+void ABomb::ExplodeTile(FTransform Transform)
+{
+    FVector Location = Transform.GetLocation();
+    Location.Z = Utils::RoundUnitCenter(Location.Z);
+
+    FCollisionObjectQueryParams QueryParams;
+    QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
+    QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
+    QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
+    QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
+    QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+    FCollisionShape CollisionShape = FCollisionShape::MakeCapsule(Utils::Unit / 8, Utils::Unit / 2);
+
+    TArray<FOverlapResult> OutOverlaps{};
+    GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
+
+    bool HasOwnExplosionVisualEffect = false;
+
+    for (const FOverlapResult& Overlap : OutOverlaps)
+    {
+        AActor* Actor = Overlap.GetActor();
+        if (Actor->Implements<UExplosiveInterface>() && Actor != this)
+        {
+            HasOwnExplosionVisualEffect = IExplosiveInterface::Execute_HasOwnExplosionVisualEffect(Actor);
+            IExplosiveInterface::Execute_BlowUp(Actor);
+        }
+    }
+
+    if (!HasOwnExplosionVisualEffect)
+    {
+        GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
+    }
 }
 
 uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
@@ -269,34 +323,26 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 	TArray<FHitResult> OutHits{};
 	GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
+    uint32 ExplosiveActorsLimit = 1;
 	for (const FHitResult& HitResult : OutHits)
 	{
 		if (!HitResult.bBlockingHit)
 		{
 			AActor* Actor = HitResult.GetActor();
 
-			if (!IsValid(Actor))
+			if (!IsValid(Actor) || Actor == this)
 			{
 				continue;
 			}
 
-            auto* ExplosiveInterface = Cast<IExplosiveInterface>(Actor);
-
             if (Actor->Implements<UExplosiveInterface>())
             {
-                if (Actor != this)
-                {
-                    float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
-                    if (IExplosiveInterface::Execute_HasOwnExplosionVisualEffect(Actor))
-                    {
-                        BlockingDistance = static_cast<uint32>(DistanceRounded);
-                    }
-                    else
-                    {
-                        BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
-                    }
+                ExplosiveActorsLimit--;
 
-                    IExplosiveInterface::Execute_BlowUp(Actor);
+                if (ExplosiveActorsLimit == 0)
+                {
+                    float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / Utils::Unit);
+                    BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
 
                     break;
                 }
@@ -304,7 +350,7 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 		}
 		else
 		{
-			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+			float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / Utils::Unit);
 			BlockingDistance = static_cast<uint32>(DistanceRounded);
 		}
 	}

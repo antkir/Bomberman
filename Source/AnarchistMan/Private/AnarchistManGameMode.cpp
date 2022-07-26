@@ -5,7 +5,9 @@
 #include <AnarchistManGameState.h>
 #include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
+#include <Bomb.h>
 #include <BreakableBlock.h>
+#include <Explosion.h>
 #include <LevelGenerator.h>
 #include <PlayerCharacter.h>
 #include <Utils.h>
@@ -30,9 +32,15 @@ AAnarchistManGameMode::AAnarchistManGameMode()
 {
     bStartPlayersAsSpectators = true;
 
-    GameOverTimeout = 3.f;
-
     RoundsToWin = 3;
+
+    CurrentMatchState = MatchState::Lobby;
+
+    RoundCountdownTime = 3.f;
+
+    CameraBlendTime = 1.f;
+
+    DrawTimeThreshold = 0.15f;
 }
 
 void AAnarchistManGameMode::BeginPlay()
@@ -47,9 +55,8 @@ void AAnarchistManGameMode::BeginPlay()
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
     AMGameState->SetRoundsToWin(RoundsToWin);
 
-    CurrentMatchState = MatchState::Lobby;
-
-    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, 5.f);
+    FTimerHandle TimerHandle;
+    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, 1.f);
 }
 
 void AAnarchistManGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
@@ -164,17 +171,15 @@ AActor* AAnarchistManGameMode::ChoosePlayerStart_Implementation(AController* Pla
 void AAnarchistManGameMode::PlayerDeath(AController* Controller)
 {
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
-    AMGameState->PlayerDeath();
-
     auto* PlayerController = Cast<AAnarchistManPlayerController>(Controller);
     auto* PlayerState = PlayerController->GetPlayerState<AAnarchistManPlayerState>();
+
     PlayerState->SetPlayerDead();
 
     if (AMGameState->GetPlayersAlive() > 1)
     {
         APlayerState* NextPlayerState = PlayerController->GetNextViewablePlayer(1);
         auto* NextPawn = NextPlayerState->GetPawn<APlayerCharacter>();
-        float BlendTime = 3.f;
 
         for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
         {
@@ -182,51 +187,78 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
             if (AMInnerPlayerState->IsDead())
             {
                 auto* InnerPlayerController = Cast<AAnarchistManPlayerController>(AMInnerPlayerState->GetPlayerController());
-                InnerPlayerController->SetViewTarget(NextPawn, CreateViewTargetTransitionParams(BlendTime));
+                InnerPlayerController->SetViewTarget(NextPawn, CreateViewTargetTransitionParams(CameraBlendTime));
             }
         }
-    }
-    else if (AMGameState->GetPlayersAlive() == 1)
-    {
-        AAnarchistManPlayerState* AMPlayerState = nullptr;
-        for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
+
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this, Controller]()
         {
-            auto* AMInnerPlayerState = Cast<AAnarchistManPlayerState>(InnerPlayerState);
-            if (!AMInnerPlayerState->IsDead())
+            if (CurrentMatchState != MatchState::InProgress)
             {
-                AMPlayerState = AMInnerPlayerState;
+                return;
             }
-        }
-        check(AMPlayerState != nullptr);
 
-        AMPlayerState->WinRound();
+            auto* AMGameState = GetGameState<AAnarchistManGameState>();
 
-        if (AMPlayerState->GetRoundWins() < RoundsToWin)
-        {
-            FString PlayerName = AMPlayerState->GetPlayerName();
-            BeginRoundOver(PlayerName);
-        }
-        else
-        {
-            FString PlayerName = AMPlayerState->GetPlayerName();
-            BeginGameOver(PlayerName);
-        }
+            if (AMGameState->GetPlayersAlive() == 1)
+            {
+                TObjectPtr<APlayerState>* WinnerPlayerState = GameState->PlayerArray.FindByPredicate([](const TObjectPtr<APlayerState>& APS)
+                {
+                    auto* AAMPS = Cast<AAnarchistManPlayerState>(APS);
+                    return !AAMPS->IsDead();
+                });
+                check(WinnerPlayerState != nullptr);
+
+                AAnarchistManPlayerState* WinnerAMPlayerState = Cast<AAnarchistManPlayerState>(WinnerPlayerState->Get());
+
+                WinnerAMPlayerState->WinRound();
+
+                auto* WinnerPlayerCharacter = WinnerAMPlayerState->GetPlayerController()->GetPawn<APlayerCharacter>();
+                WinnerPlayerCharacter->SetInvincible(true);
+
+                if (WinnerAMPlayerState->GetRoundWins() < RoundsToWin)
+                {
+                    FString PlayerName = WinnerAMPlayerState->GetPlayerName();
+                    BeginRoundOver(PlayerName);
+                }
+                else
+                {
+                    FString PlayerName = WinnerAMPlayerState->GetPlayerName();
+                    BeginGameOver(PlayerName);
+                }
+            }
+
+            RecentDeaths--;
+        }, DrawTimeThreshold, false);
     }
     else
     {
-        PlayerState->WinRound();
-
-        if (PlayerState->GetRoundWins() < RoundsToWin)
+        if (RecentDeaths > 0)
         {
-            FString PlayerName = PlayerState->GetPlayerName();
-            BeginRoundOver(PlayerName);
+            BeginRoundOver("");
         }
         else
         {
-            FString PlayerName = PlayerState->GetPlayerName();
-            BeginGameOver(PlayerName);
+            // Happens only when there is one player playing.
+            PlayerState->WinRound();
+
+            if (PlayerState->GetRoundWins() < RoundsToWin)
+            {
+                FString PlayerName = PlayerState->GetPlayerName();
+                BeginRoundOver(PlayerName);
+            }
+            else
+            {
+                FString PlayerName = PlayerState->GetPlayerName();
+                BeginGameOver(PlayerName);
+            }
         }
     }
+
+    AMGameState->PlayerDeath();
+
+    RecentDeaths++;
 }
 
 void AAnarchistManGameMode::RestartGame()
@@ -254,11 +286,11 @@ APawn* AAnarchistManGameMode::SpawnDefaultPawnFor_Implementation(AController* Ne
     PlayerCharacter->OnPlayerCharacterDeath.AddDynamic(this, &AAnarchistManGameMode::OnPlayerCharacterDeath);
     if (CurrentMatchState == MatchState::Lobby)
     {
-        PlayerCharacter->SetPawnInputState(EPawnInput::MOVEMENT_ONLY);
+        PlayerCharacter->SetInputEnabled(true);
     }
     else
     {
-        PlayerCharacter->SetPawnInputState(EPawnInput::DISABLED);
+        PlayerCharacter->SetInputEnabled(false);
     }
 
     return PlayerCharacter;
@@ -277,6 +309,18 @@ void AAnarchistManGameMode::BeginPreGame()
     {
         ABreakableBlock* BreakableBlock = *It;
         BreakableBlock->Destroy();
+    }
+
+    for (TActorIterator<ABomb> It(GetWorld()); It; ++It)
+    {
+        ABomb* Bomb = *It;
+        Bomb->Destroy();
+    }
+
+    for (TActorIterator<AExplosion> It(GetWorld()); It; ++It)
+    {
+        AExplosion* Explosion = *It;
+        Explosion->Destroy();
     }
 
     AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
@@ -311,12 +355,12 @@ void AAnarchistManGameMode::BeginPreGame()
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
     AMGameState->SetPlayersAlive(GetNumPlayers());
 
-    float Countdown = 5.f;
-    float BlendTime = 3.f;
+    RecentDeaths = 0;
 
-    if (Countdown > BlendTime)
+    if (RoundCountdownTime > CameraBlendTime)
     {
-        GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::PrepareGame, Countdown - BlendTime);
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::PrepareGame, RoundCountdownTime - CameraBlendTime);
     }
     else
     {
@@ -328,22 +372,21 @@ void AAnarchistManGameMode::BeginPreGame()
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
         auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        PlayerController->BeginPreGame(Countdown);
+        PlayerController->BeginPreGame(RoundCountdownTime);
     }
 }
 
 void AAnarchistManGameMode::PrepareGame()
 {
-    float BlendTime = 3.f;
-
     for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
     {
         auto* PlayerController = Cast<AAnarchistManPlayerController>(InnerPlayerState->GetPlayerController());
         auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
-        PlayerController->SetViewTarget(PlayerCharacter, CreateViewTargetTransitionParams(BlendTime));
+        PlayerController->SetViewTarget(PlayerCharacter, CreateViewTargetTransitionParams(CameraBlendTime));
     }
 
-    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginGame, BlendTime);
+    FTimerHandle TimerHandle;
+    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginGame, CameraBlendTime);
 }
 
 void AAnarchistManGameMode::BeginGame()
@@ -354,7 +397,8 @@ void AAnarchistManGameMode::BeginGame()
     {
         auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
         auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
-        PlayerCharacter->SetPawnInputState(EPawnInput::ENABLED);
+        PlayerCharacter->SetInputEnabled(true);
+        PlayerCharacter->SetInvincible(false);
     }
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
@@ -368,8 +412,6 @@ void AAnarchistManGameMode::BeginRoundOver(FString PlayerName)
 {
     CurrentMatchState = MatchState::RoundOver;
 
-    float BlendTime = 3.f;
-
     if (LevelObserverCameraClass)
     {
         AActor* LevelObserverCamera = UGameplayStatics::GetActorOfClass(this, LevelObserverCameraClass);
@@ -379,7 +421,7 @@ void AAnarchistManGameMode::BeginRoundOver(FString PlayerName)
             for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
             {
                 auto* PlayerController = Cast<AAnarchistManPlayerController>(InnerPlayerState->GetPlayerController());
-                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(BlendTime));
+                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(CameraBlendTime));
             }
         }
         else
@@ -388,7 +430,8 @@ void AAnarchistManGameMode::BeginRoundOver(FString PlayerName)
         }
     }
 
-    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, BlendTime);
+    FTimerHandle TimerHandle;
+    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, CameraBlendTime);
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
@@ -409,12 +452,10 @@ void AAnarchistManGameMode::BeginGameOver(FString PlayerName)
 
         if (LevelObserverCamera)
         {
-            float BlendTime = 3.f;
-
             for (const TObjectPtr<APlayerState>& PlayerState : AMGameState->PlayerArray)
             {
                 auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(BlendTime));
+                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(CameraBlendTime));
             }
         }
     }
@@ -424,12 +465,6 @@ void AAnarchistManGameMode::BeginGameOver(FString PlayerName)
         auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
         PlayerController->BeginGameOver(PlayerName);
     }
-}
-
-void AAnarchistManGameMode::OnGameOverTimeout()
-{
-    UGameInstance* GameInstance = UGameplayStatics::GetGameInstance(this);
-    GameInstance->ReturnToMainMenu();
 }
 
 inline FViewTargetTransitionParams AAnarchistManGameMode::CreateViewTargetTransitionParams(float BlendTime)
