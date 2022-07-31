@@ -23,13 +23,15 @@ public:
 
 	AAnarchistManGameMode();
 
-public:
+protected:
 
 	void BeginPlay() override;
 
 	void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
 	void PostLogin(APlayerController* NewPlayer) override;
+
+    void Destroyed() override;
 
 	AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
@@ -59,11 +61,8 @@ private:
 
 protected:
 
-    UPROPERTY(Transient)
+    UPROPERTY()
     FName CurrentMatchState;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    uint8 RoundsToWin;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Properties")
 	TSubclassOf<AActor> LevelObserverCameraClass;

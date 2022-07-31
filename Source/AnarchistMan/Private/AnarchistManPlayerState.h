@@ -43,10 +43,6 @@ public:
 
     uint32 GetActiveBombsCount();
 
-    void SetActiveBombsLimit(uint32 Limit);
-
-    bool CanPlaceBomb();
-
 protected:
 
     UPROPERTY(Replicated, BlueprintReadOnly)
@@ -60,8 +56,5 @@ protected:
 
     UPROPERTY(Replicated, BlueprintReadOnly)
     int64 ActiveBombsCount;
-
-    UPROPERTY(Replicated, BlueprintReadOnly)
-    int64 ActiveBombsLimit;
 	
 };

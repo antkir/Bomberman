@@ -24,6 +24,10 @@ public:
 	// Sets default values for this actor's properties
 	ABomb();
 
+public:
+
+    void SetExplosionConsttraintBlocks(uint64 Blocks);
+
 protected:
 
 	// Called when the game starts or when spawned
@@ -35,7 +39,7 @@ protected:
 	UFUNCTION()
 	void OnRep_BlockPawns();
 
-    bool HasOwnExplosionVisualEffect_Implementation() override;
+    bool IsBlockingExplosion_Implementation() override;
 
     void BlowUp_Implementation() override;
 
@@ -45,7 +49,7 @@ private:
 
 	void StartExplosion();
 
-    void ExplodeTile(FTransform Transform);
+    static void ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, FTransform Transform);
 
 	uint32 LineTraceExplosion(FVector Start, FVector End);
 
@@ -70,9 +74,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<AExplosion> ExplosionClass;
 
-	UPROPERTY(EditAnywhere, Category = "Parameters")
-	uint64 ExplosionConstraintBlocks;
-
 	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
 	uint8 BlockPawnsMask;
 
@@ -88,6 +89,8 @@ private:
 		uint64 Up;
 		uint64 Down;
 	};
+
+    uint64 ExplosionConstraintBlocks;
 
 	bool ExplosionTriggered;
 

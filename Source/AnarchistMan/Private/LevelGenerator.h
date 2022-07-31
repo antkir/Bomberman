@@ -8,6 +8,7 @@
 #include "LevelGenerator.generated.h"
 
 class ABreakableBlock;
+class APowerUp;
 
 UCLASS()
 class ALevelGenerator : public AActor
@@ -21,25 +22,41 @@ public:
 
 public:
 
-	void SpawnBreakableBlocks();
+	void RegenerateLevel();
+
+    void SpawnPowerUpsBatch();
 
 protected:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+private:
+
+    UFUNCTION()
+    void BlockDestroyed(AActor* DestroyedActor);
+
 protected:
 
-	UPROPERTY(EditAnywhere, Category = "Generation")
+	UPROPERTY(EditAnywhere, Category = "Properties")
 	uint64 Rows;
 
-	UPROPERTY(EditAnywhere, Category = "Generation")
+	UPROPERTY(EditAnywhere, Category = "Properties")
 	uint64 Columns;
 
-	UPROPERTY(EditAnywhere, Category = "Generation")
-	uint64 BreakableBlockDensity;
+	UPROPERTY(EditAnywhere, Category = "Properties")
+	float BreakableBlockSpawnChance;
 
-	UPROPERTY(EditAnywhere, Category = "Items")
+    UPROPERTY(EditAnywhere, Category = "Properties")
+    float PowerUpSpawnChance;
+
+    UPROPERTY(EditAnywhere, Category = "Properties")
+    float PowerUpsBatchSpawnChance;
+
+	UPROPERTY(EditAnywhere, Category = "Classes")
 	TSubclassOf<ABreakableBlock> BreakableBlockClass;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Classes")
+    TArray<TSubclassOf<APowerUp>> PowerUpClasses;
 
 };

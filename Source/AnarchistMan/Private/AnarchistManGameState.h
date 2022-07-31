@@ -17,6 +17,10 @@ class AAnarchistManGameState : public AGameStateBase
 
 public:
 
+    AAnarchistManGameState();
+
+public:
+
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void AddPlayerState(APlayerState* PlayerState) override;
@@ -27,13 +31,15 @@ public:
 
 	uint64 GetPlayersAlive();
 
-	void SetPlayersAlive(uint64 Num);
+    void SetPlayersAlive(uint64 Num);
 
-    void SetRoundsToWin(uint8 Num);
+    uint8 GetRoundsToWin();
+
+    uint8 GetDefaultBombLimit();
 
 protected:
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
+    UPROPERTY(Replicated, BlueprintReadOnly, EditDefaultsOnly, Category = "Properties")
     uint8 RoundsToWin;
 
 private:

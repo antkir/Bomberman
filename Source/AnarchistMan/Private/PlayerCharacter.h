@@ -36,13 +36,22 @@ public:
 
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    bool HasOwnExplosionVisualEffect_Implementation() override;
+    bool IsBlockingExplosion_Implementation() override;
 
     void BlowUp_Implementation() override;
 
     void SetInputEnabled(bool InputEnabled);
 
     void SetInvincible(bool Invincible);
+
+    UFUNCTION(BlueprintCallable)
+    void IncreaseMovementSpeed(float Percentage);
+
+    UFUNCTION(BlueprintCallable)
+    void IncrementExplosionConstraintBlocks();
+
+    UFUNCTION(BlueprintCallable)
+    void IncrementActiveBombsLimit();
 
 protected:
 
@@ -81,11 +90,17 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UCameraComponent* CameraComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Camera")
+	UPROPERTY(EditAnywhere, Category = "Parameters")
 	FVector CameraLocationOffset;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<ABomb> BombClass;
+
+    UPROPERTY(EditAnywhere, Category = "Parameters")
+    uint64 ExplosionConstraintBlocks;
+
+    UPROPERTY(EditAnywhere, Category = "Parameters")
+    uint64 ActiveBombsLimit;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
     bool bInputEnabled;

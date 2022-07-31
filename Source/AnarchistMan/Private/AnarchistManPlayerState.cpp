@@ -17,7 +17,6 @@ void AAnarchistManPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProper
     DOREPLIFETIME(AAnarchistManPlayerState, RoundWins);
     DOREPLIFETIME(AAnarchistManPlayerState, PlayerColor);
     DOREPLIFETIME(AAnarchistManPlayerState, ActiveBombsCount);
-    DOREPLIFETIME(AAnarchistManPlayerState, ActiveBombsLimit);
 }
 
 void AAnarchistManPlayerState::SetPlayerDead()
@@ -68,14 +67,4 @@ void AAnarchistManPlayerState::SetActiveBombsCount(uint32 Count)
 uint32 AAnarchistManPlayerState::GetActiveBombsCount()
 {
     return ActiveBombsCount;
-}
-
-void AAnarchistManPlayerState::SetActiveBombsLimit(uint32 Limit)
-{
-    ActiveBombsLimit = Limit;
-}
-
-bool AAnarchistManPlayerState::CanPlaceBomb()
-{
-    return ActiveBombsCount < ActiveBombsLimit;
 }

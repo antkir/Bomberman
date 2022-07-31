@@ -32,9 +32,9 @@ void ABreakableBlock::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponen
 	}
 }
 
-bool ABreakableBlock::HasOwnExplosionVisualEffect_Implementation()
+bool ABreakableBlock::IsBlockingExplosion_Implementation()
 {
-    return false;
+    return true;
 }
 
 void ABreakableBlock::BlowUp_Implementation()

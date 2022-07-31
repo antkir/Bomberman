@@ -32,8 +32,6 @@ AAnarchistManGameMode::AAnarchistManGameMode()
 {
     bStartPlayersAsSpectators = true;
 
-    RoundsToWin = 3;
-
     CurrentMatchState = MatchState::Lobby;
 
     RoundCountdownTime = 3.f;
@@ -52,8 +50,11 @@ void AAnarchistManGameMode::BeginPlay()
         UE_LOG(LogGame, Error, TEXT("LevelObserverCamera property is not set!"));
     }
 
-    auto* AMGameState = GetGameState<AAnarchistManGameState>();
-    AMGameState->SetRoundsToWin(RoundsToWin);
+    AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
+    if (LevelGeneratorActor == nullptr)
+    {
+        UE_LOG(LogGame, Error, TEXT("At least one Level Generator must be present in this level!"));
+    }
 
     FTimerHandle TimerHandle;
     GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, 1.f);
@@ -115,6 +116,13 @@ void AAnarchistManGameMode::PostLogin(APlayerController* NewPlayer)
     }
 
     RestartPlayer(NewPlayer);
+}
+
+void AAnarchistManGameMode::Destroyed()
+{
+    Super::Destroyed();
+
+    GetWorldTimerManager().ClearAllTimersForObject(this);
 }
 
 AActor* AAnarchistManGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -217,7 +225,7 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
                 auto* WinnerPlayerCharacter = WinnerAMPlayerState->GetPlayerController()->GetPawn<APlayerCharacter>();
                 WinnerPlayerCharacter->SetInvincible(true);
 
-                if (WinnerAMPlayerState->GetRoundWins() < RoundsToWin)
+                if (WinnerAMPlayerState->GetRoundWins() < AMGameState->GetRoundsToWin())
                 {
                     FString PlayerName = WinnerAMPlayerState->GetPlayerName();
                     BeginRoundOver(PlayerName);
@@ -226,6 +234,15 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
                 {
                     FString PlayerName = WinnerAMPlayerState->GetPlayerName();
                     BeginGameOver(PlayerName);
+                }
+            }
+            else
+            {
+                AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
+                if (LevelGeneratorActor)
+                {
+                    auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
+                    LevelGenerator->SpawnPowerUpsBatch();
                 }
             }
 
@@ -243,7 +260,7 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
             // Happens only when there is one player playing.
             PlayerState->WinRound();
 
-            if (PlayerState->GetRoundWins() < RoundsToWin)
+            if (PlayerState->GetRoundWins() < AMGameState->GetRoundsToWin())
             {
                 FString PlayerName = PlayerState->GetPlayerName();
                 BeginRoundOver(PlayerName);
@@ -305,12 +322,6 @@ void AAnarchistManGameMode::BeginPreGame()
 {
     CurrentMatchState = MatchState::PreGame;
 
-    for (TActorIterator<ABreakableBlock> It(GetWorld()); It; ++It)
-    {
-        ABreakableBlock* BreakableBlock = *It;
-        BreakableBlock->Destroy();
-    }
-
     for (TActorIterator<ABomb> It(GetWorld()); It; ++It)
     {
         ABomb* Bomb = *It;
@@ -327,11 +338,7 @@ void AAnarchistManGameMode::BeginPreGame()
     if (LevelGeneratorActor)
     {
         auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
-        LevelGenerator->SpawnBreakableBlocks();
-    }
-    else
-    {
-        UE_LOG(LogGame, Error, TEXT("At least one Level Generator must be present in this level!"));
+        LevelGenerator->RegenerateLevel();
     }
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)

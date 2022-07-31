@@ -28,6 +28,9 @@ APlayerCharacter::APlayerCharacter()
 
     bInputEnabled = true;
     bInvincible = true;
+
+    ExplosionConstraintBlocks = 3;
+    ActiveBombsLimit = 3;
 }
 
 // Called to bind functionality to input
@@ -49,6 +52,11 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
     DOREPLIFETIME(APlayerCharacter, bInputEnabled);
     DOREPLIFETIME(APlayerCharacter, bInvincible);
+}
+
+bool APlayerCharacter::IsBlockingExplosion_Implementation()
+{
+    return false;
 }
 
 void APlayerCharacter::BeginPlay()
@@ -96,6 +104,7 @@ void APlayerCharacter::PossessedBy(AController* NewController)
 
 	if (GetPlayerState())
 	{
+        auto* AMGameState = GetWorld()->GetGameState<AAnarchistManGameState>();
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
 
         uint32 PlayerId = AMPlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
@@ -105,14 +114,8 @@ void APlayerCharacter::PossessedBy(AController* NewController)
         UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
         MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
 
-        AMPlayerState->SetActiveBombsLimit(3);
         AMPlayerState->SetActiveBombsCount(0);
 	}
-}
-
-bool APlayerCharacter::HasOwnExplosionVisualEffect_Implementation()
-{
-    return false;
 }
 
 void APlayerCharacter::BlowUp_Implementation()
@@ -138,6 +141,21 @@ void APlayerCharacter::SetInputEnabled(bool InputEnabled)
 void APlayerCharacter::SetInvincible(bool Invincible)
 {
     bInvincible = Invincible;
+}
+
+void APlayerCharacter::IncreaseMovementSpeed(float Percentage)
+{
+    GetCharacterMovement()->MaxWalkSpeed += 600.f * Percentage / 100.f;
+}
+
+void APlayerCharacter::IncrementExplosionConstraintBlocks()
+{
+    ExplosionConstraintBlocks++;
+}
+
+void APlayerCharacter::IncrementActiveBombsLimit()
+{
+    ActiveBombsLimit++;
 }
 
 void APlayerCharacter::MoveVertical(float Value)
@@ -186,7 +204,7 @@ bool APlayerCharacter::CanPlaceBomb()
     if (GetPlayerState())
     {
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        if (!AMPlayerState->CanPlaceBomb())
+        if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
         {
             CanPlaceBomb = false;
         }
@@ -215,6 +233,11 @@ bool APlayerCharacter::CanPlaceBomb()
 
 void APlayerCharacter::PlaceBomb_Implementation()
 {
+    if (!bInputEnabled)
+    {
+        return;
+    }
+
     if (!CanPlaceBomb())
     {
         return;
@@ -236,5 +259,6 @@ void APlayerCharacter::PlaceBomb_Implementation()
     Transform.SetRotation(FQuat::Identity);
     FActorSpawnParameters SpawnParameters;
     ABomb* Bomb = GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
+    Bomb->SetExplosionConsttraintBlocks(ExplosionConstraintBlocks);
     Bomb->OnBombExploded.AddDynamic(this, &APlayerCharacter::OnBombExploded);
 }

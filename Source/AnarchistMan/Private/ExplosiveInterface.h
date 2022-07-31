@@ -14,7 +14,7 @@ class IExplosiveInterface
 
 public:
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-    bool HasOwnExplosionVisualEffect();
+    bool IsBlockingExplosion();
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
     void BlowUp();

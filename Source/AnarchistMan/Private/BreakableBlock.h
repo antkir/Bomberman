@@ -24,7 +24,7 @@ public:
 
 protected:
 
-    bool HasOwnExplosionVisualEffect_Implementation() override;
+    bool IsBlockingExplosion_Implementation() override;
 
     void BlowUp_Implementation() override;
 

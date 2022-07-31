@@ -1,7 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AnarchistManGameState.h"
+
 #include <Net/UnrealNetwork.h>
+
+AAnarchistManGameState::AAnarchistManGameState()
+{
+    RoundsToWin = 3;
+}
 
 void AAnarchistManGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -40,7 +46,7 @@ void AAnarchistManGameState::SetPlayersAlive(uint64 Num)
     PlayersAlive = Num;
 }
 
-void AAnarchistManGameState::SetRoundsToWin(uint8 Num)
+uint8 AAnarchistManGameState::GetRoundsToWin()
 {
-    RoundsToWin = Num;
+    return RoundsToWin;
 }

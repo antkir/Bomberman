@@ -8,6 +8,7 @@
 
 #include <Components/BoxComponent.h>
 #include <Components/CapsuleComponent.h>
+#include <Kismet/GameplayStatics.h>
 #include <Net/UnrealNetwork.h>
 
 // Sets default values
@@ -40,6 +41,11 @@ ABomb::ABomb()
 	BlockPawnsMask = 0b1111;
 
     TileExplosionDelay = 0.1f;
+}
+
+void ABomb::SetExplosionConsttraintBlocks(uint64 Blocks)
+{
+    ExplosionConstraintBlocks = Blocks;
 }
 
 void ABomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -125,7 +131,7 @@ void ABomb::OnRep_BlockPawns()
 	}
 }
 
-bool ABomb::HasOwnExplosionVisualEffect_Implementation()
+bool ABomb::IsBlockingExplosion_Implementation()
 {
     return true;
 }
@@ -209,7 +215,7 @@ void ABomb::StartExplosion()
 		Transform.SetLocation(GetActorLocation());
 		Transform.SetRotation(FQuat::Identity);
 
-        ExplodeTile(Transform);
+        ExplodeTile(GetWorld(), ExplosionClass, Transform);
 	}
 
     for (uint8 Index = 1; Index < Constraints.Right; Index++)
@@ -223,10 +229,10 @@ void ABomb::StartExplosion()
         Transform.SetRotation(FQuat::Identity);
 
         FTimerHandle TimerHandle;
-        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
         {
-            ExplodeTile(Transform);
-        }, TileExplosionDelay * Index, false);
+            ExplodeTile(World, ExplosionClass, Transform);
+        }, TileExplosionDelay* Index, false);
     }
 
     for (uint8 Index = 1; Index < Constraints.Left; Index++)
@@ -240,10 +246,10 @@ void ABomb::StartExplosion()
         Transform.SetRotation(FQuat::Identity);
 
         FTimerHandle TimerHandle;
-        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
         {
-            ExplodeTile(Transform);
-        }, TileExplosionDelay * Index, false);
+            ExplodeTile(World, ExplosionClass, Transform);
+        }, TileExplosionDelay* Index, false);
     }
 
     for (uint8 Index = 1; Index < Constraints.Up; Index++)
@@ -257,10 +263,10 @@ void ABomb::StartExplosion()
         Transform.SetRotation(FQuat::Identity);
 
         FTimerHandle TimerHandle;
-        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
         {
-            ExplodeTile(Transform);
-        }, TileExplosionDelay * Index, false);
+            ExplodeTile(World, ExplosionClass, Transform);
+        }, TileExplosionDelay* Index, false);
     }
 
     for (uint8 Index = 1; Index < Constraints.Down; Index++)
@@ -274,14 +280,14 @@ void ABomb::StartExplosion()
         Transform.SetRotation(FQuat::Identity);
 
         FTimerHandle TimerHandle;
-        GetWorldTimerManager().SetTimer(TimerHandle, [this, Transform]()
+        GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
         {
-            ExplodeTile(Transform);
+            ExplodeTile(World, ExplosionClass, Transform);
         }, TileExplosionDelay * Index, false);
     }
 }
 
-void ABomb::ExplodeTile(FTransform Transform)
+void ABomb::ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, FTransform Transform)
 {
     FVector Location = Transform.GetLocation();
     Location.Z = Utils::RoundUnitCenter(Location.Z);
@@ -296,24 +302,18 @@ void ABomb::ExplodeTile(FTransform Transform)
     FCollisionShape CollisionShape = FCollisionShape::MakeCapsule(Utils::Unit / 8, Utils::Unit / 2);
 
     TArray<FOverlapResult> OutOverlaps{};
-    GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
-
-    bool HasOwnExplosionVisualEffect = false;
+    World->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
 
     for (const FOverlapResult& Overlap : OutOverlaps)
     {
         AActor* Actor = Overlap.GetActor();
-        if (Actor->Implements<UExplosiveInterface>() && Actor != this)
+        if (IsValid(Actor) && Actor->Implements<UExplosiveInterface>())
         {
-            HasOwnExplosionVisualEffect = IExplosiveInterface::Execute_HasOwnExplosionVisualEffect(Actor);
             IExplosiveInterface::Execute_BlowUp(Actor);
         }
     }
 
-    if (!HasOwnExplosionVisualEffect)
-    {
-        GetWorld()->SpawnActorAbsolute(ExplosionClass, Transform);
-    }
+    World->SpawnActorAbsolute(ExplosionClass, Transform);
 }
 
 uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
@@ -323,7 +323,6 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 	TArray<FHitResult> OutHits{};
 	GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
 
-    uint32 ExplosiveActorsLimit = 1;
 	for (const FHitResult& HitResult : OutHits)
 	{
 		if (!HitResult.bBlockingHit)
@@ -337,9 +336,7 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 
             if (Actor->Implements<UExplosiveInterface>())
             {
-                ExplosiveActorsLimit--;
-
-                if (ExplosiveActorsLimit == 0)
+                if (IExplosiveInterface::Execute_IsBlockingExplosion(Actor))
                 {
                     float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / Utils::Unit);
                     BlockingDistance = static_cast<uint32>(DistanceRounded) + 1;
