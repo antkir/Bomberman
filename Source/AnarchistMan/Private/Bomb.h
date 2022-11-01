@@ -10,9 +10,27 @@
 #include "Bomb.generated.h"
 
 class AExplosion;
+class AGridNavMesh;
+class UAMNavModifierComponent;
 class UBoxComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBombExploded);
+
+struct FExplosionInfo
+{
+    struct FExplosionSideInfo
+    {
+        uint64 Blocks;
+        bool Blocking;
+    };
+
+    FExplosionSideInfo Left;
+    FExplosionSideInfo Right;
+    FExplosionSideInfo Up;
+    FExplosionSideInfo Down;
+
+    AExplosion* CenterExplosion;
+};
 
 UCLASS()
 class ABomb : public AActor, public IExplosiveInterface
@@ -26,12 +44,14 @@ public:
 
 public:
 
-    void SetExplosionConsttraintBlocks(uint64 Blocks);
+    void SetExplosionRadiusTiles(uint64 Blocks);
+
+    virtual void Tick(float DeltaTime) override;
 
 protected:
 
 	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
@@ -39,19 +59,31 @@ protected:
 	UFUNCTION()
 	void OnRep_BlockPawns();
 
-    bool IsBlockingExplosion_Implementation() override;
+    virtual bool IsBlockingExplosion_Implementation() override;
 
-    void BlowUp_Implementation() override;
+    virtual void BlowUp_Implementation() override;
 
 private:
 
-	void LifeSpanExpired() override;
+	virtual void LifeSpanExpired() override;
 
-	void StartExplosion();
+	void BeginExplosion();
+
+    void ScheduleTileExplosion(FTransform Transform, float Delay);
 
     static void ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, FTransform Transform);
 
-	uint32 LineTraceExplosion(FVector Start, FVector End);
+    uint32 LineTraceExplosion(FVector Start, FVector End);
+
+    void UpdateExplosionConstraints();
+
+    void SetExplosionTilesNavTimeout(AGridNavMesh* GridNavMesh, float BombExplosionTimeout);
+
+    void SetTileTimeout(AGridNavMesh* GridNavMesh, FVector Location, float Timeout);
+
+    void ExplosionTimeoutExpired();
+
+    void SetChainExplosionLifeSpan(float Timeout);
 
 public:
 
@@ -69,29 +101,38 @@ protected:
 	UAnimSequence* IdleAnimation;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
-	float LifeSpan;
+	float ExplosionTimeout;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	TSubclassOf<AExplosion> ExplosionClass;
 
 	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
-	uint8 BlockPawnsMask;
+	uint16 BlockPawnsMask;
 
     UPROPERTY(EditAnywhere, Category = "Parameters")
     float TileExplosionDelay;
 
 private:
 
-	struct ExplosionConstraints
+	struct ExplosionInfo
 	{
-		uint64 Right;
-		uint64 Left;
-		uint64 Up;
-		uint64 Down;
-	};
+        struct InfoDirection
+        {
+            uint64 Blocks;
+            bool Blocking;
+        };
+		
+        InfoDirection Left;
+        InfoDirection Right;
+        InfoDirection Up;
+        InfoDirection Down;
 
-    uint64 ExplosionConstraintBlocks;
+        AExplosion* CenterExplosion;
+	} ExplosionInfo;
 
-	bool ExplosionTriggered;
+    uint64 ExplosionRadiusTiles;
 
+	bool bExplosionTriggered;
+
+    FTimerHandle TimerHandle_ExplosionTimeoutExpired;
 };

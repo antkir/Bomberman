@@ -2,7 +2,11 @@
 
 #include "BreakableBlock.h"
 
+#include <AMNavModifierComponent.h>
+#include <GridNavMesh.h>
 #include <Utils.h>
+
+#include <Kismet/GameplayStatics.h>
 
 // Sets default values
 ABreakableBlock::ABreakableBlock()
@@ -32,6 +36,16 @@ void ABreakableBlock::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponen
 	}
 }
 
+void ABreakableBlock::BeginPlay()
+{
+    Super::BeginPlay();
+
+    auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
+    FVector Location = GetActorLocation();
+    auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BLOCK);
+    GridNavMesh->SetTileCost(Location, Cost);
+}
+
 bool ABreakableBlock::IsBlockingExplosion_Implementation()
 {
     return true;
@@ -39,5 +53,12 @@ bool ABreakableBlock::IsBlockingExplosion_Implementation()
 
 void ABreakableBlock::BlowUp_Implementation()
 {
+    auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
+    if (GridNavMesh)
+    {
+        FVector Location = GetActorLocation();
+        GridNavMesh->SetTileCost(Location, 1);
+    }
+
     Destroy();
 }

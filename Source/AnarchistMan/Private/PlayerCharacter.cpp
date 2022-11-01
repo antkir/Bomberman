@@ -29,7 +29,7 @@ APlayerCharacter::APlayerCharacter()
     bInputEnabled = true;
     bInvincible = true;
 
-    ExplosionConstraintBlocks = 3;
+    ExplosionRadiusTiles = 2;
     ActiveBombsLimit = 3;
 }
 
@@ -126,11 +126,17 @@ void APlayerCharacter::BlowUp_Implementation()
     }
 
     auto* PlayerController = Cast<APlayerController>(GetController());
-    PlayerController->UnPossess();
+    if (PlayerController)
+    {
+        PlayerController->UnPossess();
+    }
 
     Destroy();
 
-    OnPlayerCharacterDeath.Broadcast(PlayerController);
+    if (PlayerController)
+    {
+        OnPlayerCharacterDeath.Broadcast(PlayerController);
+    }
 }
 
 void APlayerCharacter::SetInputEnabled(bool InputEnabled)
@@ -148,9 +154,9 @@ void APlayerCharacter::IncreaseMovementSpeed(float Percentage)
     GetCharacterMovement()->MaxWalkSpeed += 600.f * Percentage / 100.f;
 }
 
-void APlayerCharacter::IncrementExplosionConstraintBlocks()
+void APlayerCharacter::IncrementExplosionRadiusTiles()
 {
-    ExplosionConstraintBlocks++;
+    ExplosionRadiusTiles++;
 }
 
 void APlayerCharacter::IncrementActiveBombsLimit()
@@ -193,8 +199,11 @@ void APlayerCharacter::MoveHorizontal(float Value)
 void APlayerCharacter::OnBombExploded()
 {
     auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-    uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-    AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+    if (AMPlayerState)
+    {
+        uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+        AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+    }
 }
 
 bool APlayerCharacter::CanPlaceBomb()
@@ -212,10 +221,9 @@ bool APlayerCharacter::CanPlaceBomb()
 
     TArray<FOverlapResult> OutOverlaps{};
     FVector Location = GetActorLocation();
-    Location.X = Utils::RoundUnitCenter(Location.X);
-    Location.Y = Utils::RoundUnitCenter(Location.Y);
     Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-    Location.Z = Utils::RoundUnitCenter(Location.Z);
+    Location = Utils::RoundToUnitCenter(Location);
+
     FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 20));
     GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
 
@@ -251,14 +259,14 @@ void APlayerCharacter::PlaceBomb_Implementation()
     }
 
     FVector Location = GetActorLocation();
-    Location.X = Utils::RoundUnitCenter(Location.X);
-    Location.Y = Utils::RoundUnitCenter(Location.Y);
     Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
+    Location = Utils::RoundToUnitCenter(Location);
+
     FTransform Transform;
     Transform.SetLocation(Location);
     Transform.SetRotation(FQuat::Identity);
     FActorSpawnParameters SpawnParameters;
     ABomb* Bomb = GetWorld()->SpawnActorAbsolute<ABomb>(BombClass, Transform, SpawnParameters);
-    Bomb->SetExplosionConsttraintBlocks(ExplosionConstraintBlocks);
+    Bomb->SetExplosionRadiusTiles(ExplosionRadiusTiles);
     Bomb->OnBombExploded.AddDynamic(this, &APlayerCharacter::OnBombExploded);
 }

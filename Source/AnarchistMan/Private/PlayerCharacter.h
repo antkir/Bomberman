@@ -48,7 +48,7 @@ public:
     void IncreaseMovementSpeed(float Percentage);
 
     UFUNCTION(BlueprintCallable)
-    void IncrementExplosionConstraintBlocks();
+    void IncrementExplosionRadiusTiles();
 
     UFUNCTION(BlueprintCallable)
     void IncrementActiveBombsLimit();
@@ -63,6 +63,9 @@ protected:
 
 	void PossessedBy(AController* NewController) override;
 
+    UFUNCTION(Server, Reliable, BlueprintCallable)
+    void PlaceBomb();
+
 private:
 
 	/** Handles moving up/down */
@@ -70,11 +73,6 @@ private:
 
 	/** Handles strafing movement, left and right */
 	void MoveHorizontal(float Val);
-
-	void ToggleGameMenu();
-
-    UFUNCTION(Server, Reliable)
-    void PlaceBomb();
 
     UFUNCTION()
     void OnBombExploded();
@@ -97,7 +95,7 @@ protected:
 	TSubclassOf<ABomb> BombClass;
 
     UPROPERTY(EditAnywhere, Category = "Parameters")
-    uint64 ExplosionConstraintBlocks;
+    uint64 ExplosionRadiusTiles;
 
     UPROPERTY(EditAnywhere, Category = "Parameters")
     uint64 ActiveBombsLimit;
@@ -105,7 +103,7 @@ protected:
     UPROPERTY(Replicated, BlueprintReadOnly)
     bool bInputEnabled;
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
+    UPROPERTY(Replicated, EditInstanceOnly, BlueprintReadOnly)
     bool bInvincible;
 
 };

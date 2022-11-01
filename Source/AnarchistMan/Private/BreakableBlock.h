@@ -9,6 +9,8 @@
 
 #include "BreakableBlock.generated.h"
 
+class UAMNavModifierComponent;
+
 UCLASS()
 class ABreakableBlock : public AActor, public IExplosiveInterface
 {
@@ -24,13 +26,14 @@ public:
 
 protected:
 
-    bool IsBlockingExplosion_Implementation() override;
+    void BeginPlay() override;
 
-    void BlowUp_Implementation() override;
+    virtual bool IsBlockingExplosion_Implementation() override;
+
+    virtual void BlowUp_Implementation() override;
 
 protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
-
 };

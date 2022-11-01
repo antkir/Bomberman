@@ -76,6 +76,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Properties")
     float DrawTimeThreshold;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Properties")
+    bool bResetLevelOnBeginPreGame;
+
 private:
 
     uint32 RecentDeaths;

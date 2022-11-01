@@ -19,10 +19,22 @@ public:
 	// Sets default values for this actor's properties
 	AExplosion();
 
+public:
+
+    //virtual void Tick(float DeltaTime) override;
+
+    //void SetParentBombLocation(FVector Location);
+
+    //void ScheduleExplosion(float Delay);
+
 protected:
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+private:
+
+    //void BeginExplosion();
 
 protected:
 
@@ -34,5 +46,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float LifeSpan;
+
+private:
+
+    FVector ParentBombLocation;
+
+    bool bCanSeeParentBomb;
 
 };

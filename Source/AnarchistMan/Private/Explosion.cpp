@@ -15,6 +15,7 @@ AExplosion::AExplosion()
 
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.TickInterval = 0.5f;
 
 	// Create an overlap component
 	OverlapComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("OverlapComponent"));
@@ -29,10 +30,62 @@ AExplosion::AExplosion()
 	LifeSpan = 1.f;
 }
 
+//void AExplosion::Tick(float DeltaTime)
+//{
+//    Super::Tick(DeltaTime);
+//
+//    TArray<FHitResult> OutHits{};
+//    GetWorld()->LineTraceMultiByChannel(OutHits, GetActorLocation(), ParentBombLocation, ECollisionChannel::ECC_BombVisibility);
+//
+//    for (const FHitResult& HitResult : OutHits)
+//    {
+//        if (!HitResult.bBlockingHit)
+//        {
+//            bCanSeeParentBomb = true;
+//        }
+//    }
+//}
+
+//void AExplosion::SetParentBombLocation(FVector Location)
+//{
+//    Location.Z += 50.f;
+//    ParentBombLocation = Location;
+//}
+
+//void AExplosion::ScheduleExplosion(float Delay)
+//{
+//    if (Delay != 0.f)
+//    {
+//        FTimerHandle TimerHandle;
+//        GetWorldTimerManager().SetTimer(TimerHandle, this, &AExplosion::BeginExplosion, Delay, false);
+//    }
+//    else
+//    {
+//        BeginExplosion();
+//    }
+//}
+
+//void AExplosion::BeginExplosion()
+//{
+//    if (bCanSeeParentBomb)
+//    {
+//        ParticleSystemComponent->Activate();
+//
+//        // TODO
+//        //PathCostComponent->SetCost(0);
+//
+//        SetLifeSpan(LifeSpan);
+//    }
+//    else
+//    {
+//        Destroy();
+//    }
+//}
+
 // Called when the game starts or when spawned
 void AExplosion::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SetLifeSpan(LifeSpan);
+    SetLifeSpan(LifeSpan);
 }

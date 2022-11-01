@@ -8,6 +8,7 @@
 #include <Bomb.h>
 #include <BreakableBlock.h>
 #include <Explosion.h>
+#include <GridNavMesh.h>
 #include <LevelGenerator.h>
 #include <PlayerCharacter.h>
 #include <Utils.h>
@@ -334,11 +335,20 @@ void AAnarchistManGameMode::BeginPreGame()
         Explosion->Destroy();
     }
 
-    AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
-    if (LevelGeneratorActor)
+    if (bResetLevelOnBeginPreGame)
     {
-        auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
-        LevelGenerator->RegenerateLevel();
+        auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
+        if (GridNavMesh)
+        {
+            GridNavMesh->ResetTiles();
+        }
+
+        AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
+        if (LevelGeneratorActor)
+        {
+            auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
+            LevelGenerator->RegenerateLevel();
+        }
     }
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
