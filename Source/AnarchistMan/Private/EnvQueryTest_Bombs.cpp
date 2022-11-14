@@ -52,7 +52,7 @@ void UEnvQueryTest_Bombs::RunTest(FEnvQueryInstance& QueryInstance) const
     }
 
     FVector ActorLocation = Cast<AActor>(QueryOwner)->GetActorLocation();
-    ActorLocation = Utils::RoundToUnitCenter(ActorLocation);
+    ActorLocation = FAMUtils::RoundToUnitCenter(ActorLocation);
     FNodeRef ActorNode = GridNavMesh->LocationToNodeRef(ActorLocation);
 
     NavData->BeginBatchQuery();

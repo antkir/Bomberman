@@ -103,12 +103,12 @@ void APlayerCharacter::OnRep_PlayerState()
     {
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
 
-        int32 PlayerId = AMPlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
-        GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+        int32 PlayerId = AMPlayerState->GetPlayerId() % FAMUtils::MaxPlayers;
+        GetCapsuleComponent()->SetCollisionObjectType(FAMUtils::PlayerECCs[PlayerId]);
 
-        for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
+        for (int32 Index = 0; Index < FAMUtils::MaxPlayers; Index++)
         {
-            GetCapsuleComponent()->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+            GetCapsuleComponent()->SetCollisionResponseToChannel(FAMUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
         }
 
         FColor PlayerColor = AMPlayerState->GetPlayerColor();
@@ -126,12 +126,12 @@ void APlayerCharacter::PossessedBy(AController* NewController)
         auto* AMGameState = GetWorld()->GetGameState<AAnarchistManGameState>();
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
 
-        int32 PlayerId = AMPlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
-        GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+        int32 PlayerId = AMPlayerState->GetPlayerId() % FAMUtils::MaxPlayers;
+        GetCapsuleComponent()->SetCollisionObjectType(FAMUtils::PlayerECCs[PlayerId]);
 
-        for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
+        for (int32 Index = 0; Index < FAMUtils::MaxPlayers; Index++)
         {
-            GetCapsuleComponent()->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+            GetCapsuleComponent()->SetCollisionResponseToChannel(FAMUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
         }
 
         FColor PlayerColor = AMPlayerState->GetPlayerColor();
@@ -198,7 +198,6 @@ void APlayerCharacter::MoveVertical(float Value)
 {
     if (Value != 0.f)
     {
-        // Add movement in that direction.
         AddMovementInput(FVector::YAxisVector, Value);
     }
 }
@@ -207,40 +206,40 @@ void APlayerCharacter::MoveHorizontal(float Value)
 {
     if (Value != 0.f) 
     {
-        // Add movement in that direction.
         AddMovementInput(FVector::XAxisVector, Value);
     }
 }
 
 void APlayerCharacter::OnBombExploded()
 {
-    auto* AmPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-    if (AmPlayerState)
+    auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+    if (AMPlayerState)
     {
-        int32 ActiveBombsCount = AmPlayerState->GetActiveBombsCount();
-        AmPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+        int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+        AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
     }
 }
 
 bool APlayerCharacter::CanPlaceBomb()
 {
-    bool CanPlaceBomb = true;
+    bool bCanPlaceBomb = true;
 
     if (GetPlayerState())
     {
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        check(AMPlayerState);
         if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
         {
-            CanPlaceBomb = false;
+            bCanPlaceBomb = false;
         }
     }
 
     TArray<FOverlapResult> OutOverlaps{};
     FVector Location = GetActorLocation();
     Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-    Location = Utils::RoundToUnitCenter(Location);
+    Location = FAMUtils::RoundToUnitCenter(Location);
 
-    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 8, Utils::Unit / 8, Utils::Unit));
+    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAMUtils::Unit / 8, FAMUtils::Unit / 8, FAMUtils::Unit));
     GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
 
     for (const FOverlapResult& Overlap : OutOverlaps)
@@ -248,11 +247,11 @@ bool APlayerCharacter::CanPlaceBomb()
         auto* Bomb = Cast<ABomb>(Overlap.GetActor());
         if (Bomb)
         {
-            CanPlaceBomb = false;
+            bCanPlaceBomb = false;
         }
     }
 
-    return CanPlaceBomb;
+    return bCanPlaceBomb;
 }
 
 void APlayerCharacter::PlaceBomb_Implementation()
@@ -269,15 +268,15 @@ void APlayerCharacter::PlaceBomb_Implementation()
 
     if (GetPlayerState())
     {
-        auto* AmPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        check(AmPlayerState);
-        int32 ActiveBombsCount = AmPlayerState->GetActiveBombsCount();
-        AmPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
+        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        check(AMPlayerState);
+        int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+        AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
     }
 
     FVector Location = GetActorLocation();
     Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-    Location = Utils::RoundToUnitCenter(Location);
+    Location = FAMUtils::RoundToUnitCenter(Location);
 
     FTransform Transform;
     Transform.SetLocation(Location);

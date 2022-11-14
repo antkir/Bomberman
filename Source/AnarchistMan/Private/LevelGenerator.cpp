@@ -53,7 +53,7 @@ void ALevelGenerator::BlockDestroyed(AActor* DestroyedActor)
 
     FTransform Transform;
     FVector Location = DestroyedActor->GetActorLocation();
-    Location.Z += Utils::Unit / 2;
+    Location.Z += FAMUtils::Unit / 2;
     Transform.SetLocation(Location);
     Transform.SetRotation(FQuat::Identity);
     int64 RandomIndex = FMath::RandHelper(PowerUpClasses.Num());
@@ -103,7 +103,7 @@ void ALevelGenerator::RegenerateLevel()
 				}
 			}
 
-			FVector Location = FVector(RootLocation.X + Row * Utils::Unit + Utils::Unit / 2, RootLocation.Y + Column * Utils::Unit + Utils::Unit / 2, RootLocation.Z);
+			FVector Location = FVector(RootLocation.X + Row * FAMUtils::Unit + FAMUtils::Unit / 2, RootLocation.Y + Column * FAMUtils::Unit + FAMUtils::Unit / 2, RootLocation.Z);
 			FTransform Transform;
 			Transform.SetLocation(Location);
 			Transform.SetRotation(FQuat::Identity);
@@ -132,8 +132,8 @@ void ALevelGenerator::SpawnPowerUpsBatch()
             }
 
             TArray<FOverlapResult> OutOverlaps{};
-            FVector Location = FVector(RootLocation.X + Row * Utils::Unit + Utils::Unit / 2, RootLocation.Y + Column * Utils::Unit + Utils::Unit / 2, RootLocation.Z + Utils::Unit / 2);
-            FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 2));
+            FVector Location = FVector(RootLocation.X + Row * FAMUtils::Unit + FAMUtils::Unit / 2, RootLocation.Y + Column * FAMUtils::Unit + FAMUtils::Unit / 2, RootLocation.Z + FAMUtils::Unit / 2);
+            FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAMUtils::Unit / 2));
             FCollisionObjectQueryParams QueryParams;
             QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
             QueryParams.AddObjectTypesToQuery(ECC_Pawn2);

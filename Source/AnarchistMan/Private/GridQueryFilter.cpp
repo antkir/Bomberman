@@ -72,7 +72,7 @@ uint16 FGridQueryFilter::GetExcludeFlags() const
 
 FVector FGridQueryFilter::GetAdjustedEndLocation(const FVector& EndLocation) const
 {
-    FVector Location = Utils::RoundToUnitCenter(EndLocation);
+    FVector Location = FAMUtils::RoundToUnitCenter(EndLocation);
     Location.Z = GridNavMesh->GetActorLocation().Z;
     return Location;
 }

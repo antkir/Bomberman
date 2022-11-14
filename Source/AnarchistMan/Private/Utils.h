@@ -33,13 +33,14 @@ enum Type : int64
 };
 }
 
-namespace Utils {
+struct FAMUtils
+{
 
-constexpr float Unit = 100.f;
+static constexpr float Unit = 100.f;
 
-constexpr uint8 MAX_PLAYERS = 4;
+static constexpr uint8 MaxPlayers = 4;
 
-constexpr ECollisionChannel PlayerECCs[MAX_PLAYERS]
+static constexpr ECollisionChannel PlayerECCs[MaxPlayers]
 {
 	ECC_Pawn1,
 	ECC_Pawn2,
@@ -47,7 +48,7 @@ constexpr ECollisionChannel PlayerECCs[MAX_PLAYERS]
 	ECC_Pawn4
 };
 
-constexpr FColor PlayerColors[MAX_PLAYERS]
+static constexpr FColor PlayerColors[MaxPlayers]
 {
 	FColor(255, 0, 0),
 	FColor(0, 255, 0),
@@ -55,12 +56,12 @@ constexpr FColor PlayerColors[MAX_PLAYERS]
 	FColor(255, 255, 0),
 };
 
-FORCEINLINE float RoundToUnitCenter(float Num)
+static FORCEINLINE float RoundToUnitCenter(float Num)
 {
     return FMath::Floor(Num / Unit) * Unit + Unit / 2;
 }
 
-FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
+static FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
 {
     Vector.X = RoundToUnitCenter(Vector.X);
     Vector.Y = RoundToUnitCenter(Vector.Y);
@@ -68,7 +69,7 @@ FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
     return Vector;
 }
 
-FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
+static FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
 {
 	switch (ECC)
 	{
@@ -85,4 +86,4 @@ FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
 	}
 }
 
-}
+};

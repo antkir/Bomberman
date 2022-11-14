@@ -475,7 +475,7 @@ void AAnarchistManGameMode::SetControllerName(AController* Controller)
 {
     auto* PlayerState = Controller->GetPlayerState<AAnarchistManPlayerState>();
     check(PlayerState);
-    int32 PlayerId = PlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
+    int32 PlayerId = PlayerState->GetPlayerId() % FAMUtils::MaxPlayers;
     FString PlayerName;
 
     switch (PlayerId)
@@ -503,8 +503,8 @@ void AAnarchistManGameMode::SetControllerColor(AController* Controller)
 {
     auto* PlayerState = Controller->GetPlayerState<AAnarchistManPlayerState>();
     check(PlayerState);
-    int32 PlayerId = PlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
-    FColor PlayerColor = Utils::PlayerColors[PlayerId];
+    int32 PlayerId = PlayerState->GetPlayerId() % FAMUtils::MaxPlayers;
+    FColor PlayerColor = FAMUtils::PlayerColors[PlayerId];
     PlayerState->SetPlayerColor(PlayerColor);
 }
 

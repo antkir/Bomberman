@@ -109,8 +109,8 @@ void ABomb::BeginPlay()
 
             TArray<FOverlapResult> OutOverlaps{};
             FVector Location = GetActorLocation();
-            Location.Z = Utils::RoundToUnitCenter(Location.Z);
-            FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 2));
+            Location.Z = FAMUtils::RoundToUnitCenter(Location.Z);
+            FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAMUtils::Unit / 2));
             FCollisionObjectQueryParams QueryParams;
             QueryParams.AddObjectTypesToQuery(ECC_Pawn);
             QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
@@ -125,7 +125,7 @@ void ABomb::BeginPlay()
                 if (PlayerCharacter)
                 {
                     ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
-                    BlockMask ^= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+                    BlockMask ^= FAMUtils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
                 }
             }
 
@@ -154,22 +154,22 @@ void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* O
 	if (PlayerCharacter)
 	{
 		ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
-		BlockPawnsMask |= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+		BlockPawnsMask |= FAMUtils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
 	}
 	OnRep_BlockPawns();
 }
 
 void ABomb::OnRep_BlockPawns()
 {
-	for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
+	for (int32 Index = 0; Index < FAMUtils::MaxPlayers; Index++)
 	{
 		if (BlockPawnsMask & (1 << Index))
 		{
-			OverlapComponent->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Block);
+			OverlapComponent->SetCollisionResponseToChannel(FAMUtils::PlayerECCs[Index], ECollisionResponse::ECR_Block);
 		}
 		else
 		{
-			OverlapComponent->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Overlap);
+			OverlapComponent->SetCollisionResponseToChannel(FAMUtils::PlayerECCs[Index], ECollisionResponse::ECR_Overlap);
 		}
 	}
 }
@@ -237,8 +237,8 @@ void ABomb::BeginExplosion()
     for (int32 Index = 1; Index <= ExplosionInfo.LeftTiles; Index++)
     {
         FVector Location = GetActorLocation();
-        Location.X = Utils::RoundToUnitCenter(Location.X) - Utils::Unit * Index;
-        Location.Y = Utils::RoundToUnitCenter(Location.Y);
+        Location.X = FAMUtils::RoundToUnitCenter(Location.X) - FAMUtils::Unit * Index;
+        Location.Y = FAMUtils::RoundToUnitCenter(Location.Y);
         FTransform Transform;
         Transform.SetLocation(Location);
         Transform.SetRotation(FQuat::Identity);
@@ -250,8 +250,8 @@ void ABomb::BeginExplosion()
     for (int32 Index = 1; Index <= ExplosionInfo.RightTiles; Index++)
     {
         FVector Location = GetActorLocation();
-        Location.X = Utils::RoundToUnitCenter(Location.X) + Utils::Unit * Index;
-        Location.Y = Utils::RoundToUnitCenter(Location.Y);
+        Location.X = FAMUtils::RoundToUnitCenter(Location.X) + FAMUtils::Unit * Index;
+        Location.Y = FAMUtils::RoundToUnitCenter(Location.Y);
         FTransform Transform;
         Transform.SetLocation(Location);
         Transform.SetRotation(FQuat::Identity);
@@ -263,8 +263,8 @@ void ABomb::BeginExplosion()
     for (int32 Index = 1; Index <= ExplosionInfo.UpTiles; Index++)
     {
         FVector Location = GetActorLocation();
-        Location.X = Utils::RoundToUnitCenter(Location.X);
-        Location.Y = Utils::RoundToUnitCenter(Location.Y) - Utils::Unit * Index;
+        Location.X = FAMUtils::RoundToUnitCenter(Location.X);
+        Location.Y = FAMUtils::RoundToUnitCenter(Location.Y) - FAMUtils::Unit * Index;
         FTransform Transform;
         Transform.SetLocation(Location);
         Transform.SetRotation(FQuat::Identity);
@@ -276,8 +276,8 @@ void ABomb::BeginExplosion()
     for (int32 Index = 1; Index <= ExplosionInfo.DownTiles; Index++)
     {
         FVector Location = GetActorLocation();
-        Location.X = Utils::RoundToUnitCenter(Location.X);
-        Location.Y = Utils::RoundToUnitCenter(Location.Y) + Utils::Unit * Index;
+        Location.X = FAMUtils::RoundToUnitCenter(Location.X);
+        Location.Y = FAMUtils::RoundToUnitCenter(Location.Y) + FAMUtils::Unit * Index;
         FTransform Transform;
         Transform.SetLocation(Location);
         Transform.SetRotation(FQuat::Identity);
@@ -314,7 +314,7 @@ void ABomb::ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, F
     check(!World->IsNetMode(NM_Client));
 
     FVector Location = Transform.GetLocation();
-    Location.Z = Utils::RoundToUnitCenter(Location.Z);
+    Location.Z = FAMUtils::RoundToUnitCenter(Location.Z);
 
     FCollisionObjectQueryParams QueryParams;
     QueryParams.AddObjectTypesToQuery(ECC_Pawn);
@@ -324,7 +324,7 @@ void ABomb::ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, F
     QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
     QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
 
-    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 8, Utils::Unit / 8, Utils::Unit));
+    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAMUtils::Unit / 8, FAMUtils::Unit / 8, FAMUtils::Unit));
 
     TArray<FOverlapResult> OutOverlaps{};
     World->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
@@ -363,7 +363,7 @@ int32 ABomb::LineTraceExplosion(FVector Start, FVector End)
             {
                 if (Actor->IsA<ABomb>())
                 {
-                    FVector Delta = (Actor->GetActorLocation() - Start) / Utils::Unit;
+                    FVector Delta = (Actor->GetActorLocation() - Start) / FAMUtils::Unit;
                     float Timeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
                     if (Timeout != -1.f)
                     {
@@ -373,7 +373,7 @@ int32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 
                 if (IExplosiveInterface::Execute_IsBlockingExplosion(Actor))
                 {
-                    float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / Utils::Unit);
+                    float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / FAMUtils::Unit);
                     ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 
                     break;
@@ -383,7 +383,7 @@ int32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 		else
 		{
             // Static walls
-			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
+			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / FAMUtils::Unit);
             ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 		}
 	}
@@ -398,7 +398,7 @@ void ABomb::UpdateExplosionConstraints()
     // Left
     {
         FVector End = GetActorLocation();
-        End.X = Utils::RoundToUnitCenter(End.X) - Utils::Unit * ExplosionMaxRadiusTiles;
+        End.X = FAMUtils::RoundToUnitCenter(End.X) - FAMUtils::Unit * ExplosionMaxRadiusTiles;
 
         int32 Constraint = LineTraceExplosion(Start, End);
         ExplosionInfo.LeftTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
@@ -407,7 +407,7 @@ void ABomb::UpdateExplosionConstraints()
     // Right
     {
         FVector End = GetActorLocation();
-        End.X = Utils::RoundToUnitCenter(End.X) + Utils::Unit * ExplosionMaxRadiusTiles;
+        End.X = FAMUtils::RoundToUnitCenter(End.X) + FAMUtils::Unit * ExplosionMaxRadiusTiles;
 
         int32 Constraint = LineTraceExplosion(Start, End);
         ExplosionInfo.RightTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
@@ -416,7 +416,7 @@ void ABomb::UpdateExplosionConstraints()
     // Up
     {
         FVector End = GetActorLocation();
-        End.Y = Utils::RoundToUnitCenter(End.Y) - Utils::Unit * ExplosionMaxRadiusTiles;
+        End.Y = FAMUtils::RoundToUnitCenter(End.Y) - FAMUtils::Unit * ExplosionMaxRadiusTiles;
 
         int32 Constraint = LineTraceExplosion(Start, End);
         ExplosionInfo.UpTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
@@ -425,7 +425,7 @@ void ABomb::UpdateExplosionConstraints()
     // Down
     {
         FVector End = GetActorLocation();
-        End.Y = Utils::RoundToUnitCenter(End.Y) + Utils::Unit * ExplosionMaxRadiusTiles;
+        End.Y = FAMUtils::RoundToUnitCenter(End.Y) + FAMUtils::Unit * ExplosionMaxRadiusTiles;
 
         int32 Constraint = LineTraceExplosion(Start, End);
         ExplosionInfo.DownTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
@@ -441,28 +441,28 @@ void ABomb::SetExplosionTilesNavTimeout(AGridNavMesh* GridNavMesh, float BombExp
         if (Index <= ExplosionInfo.LeftTiles)
         {
             FVector Location = GetActorLocation();
-            Location.X = Utils::RoundToUnitCenter(Location.X) - Utils::Unit * Index;
+            Location.X = FAMUtils::RoundToUnitCenter(Location.X) - FAMUtils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
         if (Index <= ExplosionInfo.RightTiles)
         {
             FVector Location = GetActorLocation();
-            Location.X = Utils::RoundToUnitCenter(Location.X) + Utils::Unit * Index;
+            Location.X = FAMUtils::RoundToUnitCenter(Location.X) + FAMUtils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
         if (Index <= ExplosionInfo.UpTiles)
         {
             FVector Location = GetActorLocation();
-            Location.Y = Utils::RoundToUnitCenter(Location.Y) - Utils::Unit * Index;
+            Location.Y = FAMUtils::RoundToUnitCenter(Location.Y) - FAMUtils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
         if (Index <= ExplosionInfo.DownTiles)
         {
             FVector Location = GetActorLocation();
-            Location.Y = Utils::RoundToUnitCenter(Location.Y) + Utils::Unit * Index;
+            Location.Y = FAMUtils::RoundToUnitCenter(Location.Y) + FAMUtils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
     }

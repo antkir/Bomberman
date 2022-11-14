@@ -39,7 +39,7 @@ void AGridNavMesh::Tick(float DeltaSeconds)
         for (FNodeRef NodeRef = 0; NodeRef < TileCosts.Num(); NodeRef++)
         {
             FVector Location = NodeRefToLocation(NodeRef);
-            Location.Z += Utils::Unit;
+            Location.Z += FAMUtils::Unit;
 
             FString Text;
             FColor Color;
@@ -125,10 +125,10 @@ FPathFindingResult AGridNavMesh::FindPath(const FNavAgentProperties& AgentProper
 
     float TraversalCost = 0.f;
 
-    FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
+    FVector StartLocation = FAMUtils::RoundToUnitCenter(Query.StartLocation);
     StartLocation.Z = NavMesh->GetActorLocation().Z;
 
-    FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
+    FVector EndLocation = FAMUtils::RoundToUnitCenter(Query.EndLocation);
     EndLocation.Z = NavMesh->GetActorLocation().Z;
 
     FNodeRef StartNodeRef = NavMesh->LocationToNodeRef(StartLocation);
@@ -247,8 +247,8 @@ bool AGridNavMesh::TestPath(const FNavAgentProperties& AgentProperties, const FP
 
     bool bPathExists = true;
 
-    FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
-    FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
+    FVector StartLocation = FAMUtils::RoundToUnitCenter(Query.StartLocation);
+    FVector EndLocation = FAMUtils::RoundToUnitCenter(Query.EndLocation);
 
     FNodeRef StartNodeRef = NavMesh->LocationToNodeRef(StartLocation);
     FNodeRef EndNodeRef = NavMesh->LocationToNodeRef(EndLocation);
@@ -514,7 +514,7 @@ FVector AGridNavMesh::FindNearestCharacter(AController* Controller) const
     {
         if (Controller->GetPawn() != Actor)
         {
-            FVector ActorLocation = Utils::RoundToUnitCenter(Actor->GetActorLocation());
+            FVector ActorLocation = FAMUtils::RoundToUnitCenter(Actor->GetActorLocation());
             FNodeRef ActorNodeRef = LocationToNodeRef(ActorLocation);
             CharacterNodeRefs.Add(ActorNodeRef);
         }
@@ -554,7 +554,7 @@ bool AGridNavMesh::IsCharacterNearby(AController* Controller, int64 RadiusTiles)
     {
         if (Controller->GetPawn() != Actor)
         {
-            FVector ActorLocation = Utils::RoundToUnitCenter(Actor->GetActorLocation());
+            FVector ActorLocation = FAMUtils::RoundToUnitCenter(Actor->GetActorLocation());
             FNodeRef ActorNodeRef = LocationToNodeRef(ActorLocation);
             CharacterNodeRefs.Add(ActorNodeRef);
         }
@@ -648,8 +648,8 @@ void AGridNavMesh::BFS(AController* Controller, const FNodeDescription& StartNod
 FVector AGridNavMesh::NodeRefToLocation(FNodeRef NodeRef) const
 {
     FVector NodeLocation;
-    NodeLocation.X = (NodeRef % Columns) * Utils::Unit + Utils::Unit / 2;
-    NodeLocation.Y = (NodeRef / Columns) * Utils::Unit + Utils::Unit / 2;
+    NodeLocation.X = (NodeRef % Columns) * FAMUtils::Unit + FAMUtils::Unit / 2;
+    NodeLocation.Y = (NodeRef / Columns) * FAMUtils::Unit + FAMUtils::Unit / 2;
     NodeLocation.Z = GetActorLocation().Z;
     return NodeLocation;
 }
@@ -657,8 +657,8 @@ FVector AGridNavMesh::NodeRefToLocation(FNodeRef NodeRef) const
 FNodeRef AGridNavMesh::LocationToNodeRef(FVector Location) const
 {
     FIntVector LocationIndex;
-    LocationIndex.X = Location.X / Utils::Unit;
-    LocationIndex.Y = Location.Y / Utils::Unit;
+    LocationIndex.X = Location.X / FAMUtils::Unit;
+    LocationIndex.Y = Location.Y / FAMUtils::Unit;
 
     return LocationIndex.Y * Columns + LocationIndex.X;
 }

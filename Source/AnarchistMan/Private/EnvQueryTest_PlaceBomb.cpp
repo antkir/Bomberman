@@ -26,13 +26,13 @@ void UEnvQueryTest_PlaceBomb::RunTest(FEnvQueryInstance& QueryInstance) const
     auto* PlayerCharacter = Cast<APlayerCharacter>(DataOwner);
 
     FVector ActorLocation = PlayerCharacter->GetActorLocation();
-    ActorLocation = Utils::RoundToUnitCenter(ActorLocation);
+    ActorLocation = FAMUtils::RoundToUnitCenter(ActorLocation);
 
     uint64 ExplosionRadiusTiles = PlayerCharacter->GetExplosionRadiusTiles();
-    float MinX = ActorLocation.X - ExplosionRadiusTiles * Utils::Unit - Utils::Unit / 2;
-    float MaxX = ActorLocation.X + ExplosionRadiusTiles * Utils::Unit + Utils::Unit / 2;
-    float MinY = ActorLocation.Y - ExplosionRadiusTiles * Utils::Unit - Utils::Unit / 2;
-    float MaxY = ActorLocation.Y + ExplosionRadiusTiles * Utils::Unit + Utils::Unit / 2;
+    float MinX = ActorLocation.X - ExplosionRadiusTiles * FAMUtils::Unit - FAMUtils::Unit / 2;
+    float MaxX = ActorLocation.X + ExplosionRadiusTiles * FAMUtils::Unit + FAMUtils::Unit / 2;
+    float MinY = ActorLocation.Y - ExplosionRadiusTiles * FAMUtils::Unit - FAMUtils::Unit / 2;
+    float MaxY = ActorLocation.Y + ExplosionRadiusTiles * FAMUtils::Unit + FAMUtils::Unit / 2;
 
     FEnvQueryInstance::ItemIterator It(this, QueryInstance);
     It.IgnoreTimeLimit();
