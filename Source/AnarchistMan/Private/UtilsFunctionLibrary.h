@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "Utils.h"
-
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+
+#include "Utils.h"
 
 #include "UtilsFunctionLibrary.generated.h"
 

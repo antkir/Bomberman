@@ -2,11 +2,10 @@
 
 #include "AnarchistManPlayerController.h"
 
-#include <Blueprint/UserWidget.h>
-#include <Net/UnrealNetwork.h>
-
 AAnarchistManPlayerController::AAnarchistManPlayerController()
 {
+    bIsGameMenuOpen = false;
+
     bAutoManageActiveCameraTarget = false;
 }
 

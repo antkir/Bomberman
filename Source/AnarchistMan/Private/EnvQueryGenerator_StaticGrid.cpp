@@ -1,14 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "EnvQueryGenerator_StaticGrid.h"
-//#include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
 
 #define LOCTEXT_NAMESPACE "EnvQueryGenerator"
 
 UEnvQueryGenerator_StaticGrid::UEnvQueryGenerator_StaticGrid(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-    //GenerateAround = UEnvQueryContext_Querier::StaticClass();
     GridSize.DefaultValue = 500.0f;
+
     SpaceBetween.DefaultValue = 100.0f;
 }
 
@@ -47,14 +46,20 @@ void UEnvQueryGenerator_StaticGrid::GenerateItems(FEnvQueryInstance& QueryInstan
 
 FText UEnvQueryGenerator_StaticGrid::GetDescriptionTitle() const
 {
-    return FText::Format(LOCTEXT("StaticGridDescriptionGenerateAroundContext", "{0}: generate around {1}"),
-        Super::GetDescriptionTitle(), FText::FromString(GenerateAroundLocation.ToString()));
+    return FText::Format(
+        LOCTEXT("StaticGridDescriptionGenerateAroundContext", "{0}: generate around {1}"),
+        Super::GetDescriptionTitle(),
+        FText::FromString(GenerateAroundLocation.ToString())
+    );
 };
 
 FText UEnvQueryGenerator_StaticGrid::GetDescriptionDetails() const
 {
-    FText Desc = FText::Format(LOCTEXT("StaticGridDescription", "radius: {0}, space between: {1}"),
-        FText::FromString(GridSize.ToString()), FText::FromString(SpaceBetween.ToString()));
+    FText Desc = FText::Format(
+        LOCTEXT("StaticGridDescription", "radius: {0}, space between: {1}"),
+        FText::FromString(GridSize.ToString()),
+        FText::FromString(SpaceBetween.ToString())
+    );
 
     FText ProjDesc = ProjectionData.ToText(FEnvTraceData::Brief);
     if (!ProjDesc.IsEmpty())
@@ -62,7 +67,10 @@ FText UEnvQueryGenerator_StaticGrid::GetDescriptionDetails() const
         FFormatNamedArguments ProjArgs;
         ProjArgs.Add(TEXT("Description"), Desc);
         ProjArgs.Add(TEXT("ProjectionDescription"), ProjDesc);
-        Desc = FText::Format(LOCTEXT("StaticGridDescriptionWithProjection", "{Description}, {ProjectionDescription}"), ProjArgs);
+        Desc = FText::Format(
+            LOCTEXT("StaticGridDescriptionWithProjection", "{Description}, {ProjectionDescription}"),
+            ProjArgs
+        );
     }
 
     return Desc;

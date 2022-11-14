@@ -2,13 +2,11 @@
 
 #include "Explosion.h"
 
-#include <PlayerCharacter.h>
-#include <Utils.h>
-
 #include <Components/BoxComponent.h>
 #include <Particles/ParticleSystemComponent.h>
 
-// Sets default values
+#include <Utils.h>
+
 AExplosion::AExplosion()
 {
 	bReplicates = true;
@@ -29,58 +27,6 @@ AExplosion::AExplosion()
 
 	LifeSpan = 1.f;
 }
-
-//void AExplosion::Tick(float DeltaTime)
-//{
-//    Super::Tick(DeltaTime);
-//
-//    TArray<FHitResult> OutHits{};
-//    GetWorld()->LineTraceMultiByChannel(OutHits, GetActorLocation(), ParentBombLocation, ECollisionChannel::ECC_BombVisibility);
-//
-//    for (const FHitResult& HitResult : OutHits)
-//    {
-//        if (!HitResult.bBlockingHit)
-//        {
-//            bCanSeeParentBomb = true;
-//        }
-//    }
-//}
-
-//void AExplosion::SetParentBombLocation(FVector Location)
-//{
-//    Location.Z += 50.f;
-//    ParentBombLocation = Location;
-//}
-
-//void AExplosion::ScheduleExplosion(float Delay)
-//{
-//    if (Delay != 0.f)
-//    {
-//        FTimerHandle TimerHandle;
-//        GetWorldTimerManager().SetTimer(TimerHandle, this, &AExplosion::BeginExplosion, Delay, false);
-//    }
-//    else
-//    {
-//        BeginExplosion();
-//    }
-//}
-
-//void AExplosion::BeginExplosion()
-//{
-//    if (bCanSeeParentBomb)
-//    {
-//        ParticleSystemComponent->Activate();
-//
-//        // TODO
-//        //PathCostComponent->SetCost(0);
-//
-//        SetLifeSpan(LifeSpan);
-//    }
-//    else
-//    {
-//        Destroy();
-//    }
-//}
 
 // Called when the game starts or when spawned
 void AExplosion::BeginPlay()

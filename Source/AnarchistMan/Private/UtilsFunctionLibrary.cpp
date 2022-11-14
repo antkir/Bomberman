@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "UtilsFunctionLibrary.h"
 
 int64 UUtilsFunctionLibrary::GetValue(ETileType TileType)

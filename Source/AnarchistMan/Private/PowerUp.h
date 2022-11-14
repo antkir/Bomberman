@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "ExplosiveInterface.h"
-
 #include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include "ExplosiveInterface.h"
 
 #include "PowerUp.generated.h"
 
@@ -55,7 +55,7 @@ protected:
     UCurveFloat* CurveFloat;
 
     UPROPERTY(EditAnywhere, Category = "Timeline")
-    float ZOffset;
+    float ZDistance;
 
 private:
 

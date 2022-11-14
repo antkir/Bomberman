@@ -1,21 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "EnvQueryTest_PlaceBomb.h"
 
-#include "Bomb.h"
-#include "BreakableBlock.h"
-#include "Utils.h"
+#include <EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h>
+#include <EnvironmentQuery/Contexts/EnvQueryContext_Querier.h>
 
-#include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
-
-#define LOCTEXT_NAMESPACE "EnvQueryGenerator"
+#include <PlayerCharacter.h>
+#include <Utils.h>
 
 UEnvQueryTest_PlaceBomb::UEnvQueryTest_PlaceBomb(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
     Cost = EEnvTestCost::High;
+
     ValidItemType = UEnvQueryItemType_VectorBase::StaticClass();
+
     SetWorkOnFloatValues(false);
 }
 
@@ -24,21 +22,25 @@ void UEnvQueryTest_PlaceBomb::RunTest(FEnvQueryInstance& QueryInstance) const
     UObject* DataOwner = QueryInstance.Owner.Get();
     BoolValue.BindData(DataOwner, QueryInstance.QueryID);
     bool bWantsHit = BoolValue.GetValue();
-    FVector ActorLocation = Cast<AActor>(DataOwner)->GetActorLocation();
+
+    auto* PlayerCharacter = Cast<APlayerCharacter>(DataOwner);
+
+    FVector ActorLocation = PlayerCharacter->GetActorLocation();
     ActorLocation = Utils::RoundToUnitCenter(ActorLocation);
 
-    uint64 ExplosionRadiusUnits = 2;
+    uint64 ExplosionRadiusTiles = PlayerCharacter->GetExplosionRadiusTiles();
+    float MinX = ActorLocation.X - ExplosionRadiusTiles * Utils::Unit - Utils::Unit / 2;
+    float MaxX = ActorLocation.X + ExplosionRadiusTiles * Utils::Unit + Utils::Unit / 2;
+    float MinY = ActorLocation.Y - ExplosionRadiusTiles * Utils::Unit - Utils::Unit / 2;
+    float MaxY = ActorLocation.Y + ExplosionRadiusTiles * Utils::Unit + Utils::Unit / 2;
 
-    float MinX = ActorLocation.X - Utils::Unit / 2 - ExplosionRadiusUnits * Utils::Unit;
-    float MinY = ActorLocation.Y - Utils::Unit / 2 - ExplosionRadiusUnits * Utils::Unit;;
-    float MaxX = ActorLocation.X + Utils::Unit / 2 + ExplosionRadiusUnits * Utils::Unit;;
-    float MaxY = ActorLocation.Y + Utils::Unit / 2 + ExplosionRadiusUnits * Utils::Unit;;
-
-    for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
+    FEnvQueryInstance::ItemIterator It(this, QueryInstance);
+    It.IgnoreTimeLimit();
+    for (; It; ++It)
     {
         bool bScore = true;
-        FVector ItemLocation = GetItemLocation(QueryInstance, It.GetIndex());
 
+        FVector ItemLocation = GetItemLocation(QueryInstance, It.GetIndex());
         if ((ItemLocation.X > MinX && ItemLocation.X < MaxX && ItemLocation.Y == ActorLocation.Y) ||
             (ItemLocation.Y > MinY && ItemLocation.Y < MaxY && ItemLocation.X == ActorLocation.X))
         {
@@ -51,13 +53,10 @@ void UEnvQueryTest_PlaceBomb::RunTest(FEnvQueryInstance& QueryInstance) const
 
 FText UEnvQueryTest_PlaceBomb::GetDescriptionTitle() const
 {
-    return FText::FromString(FString::Printf(TEXT("%s"),
-                                             *Super::GetDescriptionTitle().ToString()));
+    return FText::FromString(FString::Printf(TEXT("%s"), *Super::GetDescriptionTitle().ToString()));
 }
 
 FText UEnvQueryTest_PlaceBomb::GetDescriptionDetails() const
 {
     return DescribeBoolTestParams("");
 }
-
-#undef LOCTEXT_NAMESPACE

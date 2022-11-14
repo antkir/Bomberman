@@ -2,18 +2,16 @@
 
 #include "Bomb.h"
 
-#include <AMNavModifierComponent.h>
-#include <Explosion.h>
-#include <GridNavMesh.h>
-#include <PlayerCharacter.h>
-#include <Utils.h>
-
 #include <Components/BoxComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <Kismet/GameplayStatics.h>
 #include <Net/UnrealNetwork.h>
 
-// Sets default values
+#include <Explosion.h>
+#include <GridNavMesh.h>
+#include <PlayerCharacter.h>
+#include <Utils.h>
+
 ABomb::ABomb()
 {
 	bReplicates = true;
@@ -30,25 +28,22 @@ ABomb::ABomb()
 
 	// Create a mesh component
 	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponent"));
-
-	// Set the component's mesh
-	USkeletalMesh* BombMesh = ConstructorHelpers::FObjectFinder<USkeletalMesh>(TEXT("SkeletalMesh'/Engine/EngineMeshes/SkeletalCube'")).Object;
-	MeshComponent->SetSkeletalMesh(BombMesh);
-
 	MeshComponent->SetupAttachment(RootComponent);
-
-    SetExplosionRadiusTiles(2);
 
     TileExplosionDelay = 0.1f;
 
     ExplosionTimeout = 3.f;
 
-	BlockPawnsMask = std::numeric_limits<uint16>::max();
+    ExplosionMaxRadiusTiles = 2;
+
+    bExplosionTriggered = 0;
+
+    BlockPawnsMask = 0;
 }
 
-void ABomb::SetExplosionRadiusTiles(uint64 Radius)
+void ABomb::SetExplosionRadiusTiles(int32 Radius)
 {
-    ExplosionRadiusTiles = Radius;
+    ExplosionMaxRadiusTiles = Radius;
 }
 
 void ABomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -64,24 +59,23 @@ void ABomb::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
-    if (HasAuthority() && GridNavMesh)
+    if (HasAuthority())
     {
-        UpdateExplosionConstraints();
-
-        float TimeRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
-        if (TimeRemaining == -1.f)
+        auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
+        if (GridNavMesh)
         {
-            float LifeSpanAfterExplosion = TileExplosionDelay * ExplosionRadiusTiles;
-            float LifeSpanRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_LifeSpanExpired);
-            TimeRemaining = 0.f - (LifeSpanAfterExplosion - LifeSpanRemaining);
+            UpdateExplosionConstraints();
+
+            float ExplosionTimeRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
+            if (ExplosionTimeRemaining == -1.f)
+            {
+                float LifeSpanAfterExplosion = TileExplosionDelay * ExplosionMaxRadiusTiles;
+                float LifeSpanRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_LifeSpanExpired);
+                ExplosionTimeRemaining = -(LifeSpanAfterExplosion - LifeSpanRemaining);
+            }
+
+            SetExplosionTilesNavTimeout(GridNavMesh, ExplosionTimeRemaining);
         }
-
-        uint64 Identifier = GetActorLocation().X;
-        GEngine->AddOnScreenDebugMessage(Identifier + 1, 0.0f, FColor::Yellow, GetActorLocation().ToString());
-        GEngine->AddOnScreenDebugMessage(Identifier + 2, 0.0f, FColor::Green, FString::Printf(TEXT("Time: %f"), TimeRemaining));
-
-        SetExplosionTilesNavTimeout(GridNavMesh, TimeRemaining);
     }
 }
 
@@ -96,26 +90,23 @@ void ABomb::BeginPlay()
         return;
     }
 
-    if (ExplosionTimeout > 0.0f)
-    {
-        GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &ABomb::ExplosionTimeoutExpired, ExplosionTimeout);
-    }
-    else
-    {
-        GetWorldTimerManager().ClearTimer(TimerHandle_ExplosionTimeoutExpired);
-    }
-
-	SetLifeSpan(ExplosionTimeout + TileExplosionDelay * ExplosionRadiusTiles);
-
-	if (IdleAnimation)
-	{
-		MeshComponent->PlayAnimation(IdleAnimation, true);
-	}
-
 	if (HasAuthority())
-	{
+    {
+        if (ExplosionTimeout > 0.0f)
+        {
+            GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &ABomb::ExplosionTimeoutExpired, ExplosionTimeout);
+        }
+        else
+        {
+            GetWorldTimerManager().ClearTimer(TimerHandle_ExplosionTimeoutExpired);
+        }
+
+        SetLifeSpan(ExplosionTimeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
+
 		// Do not block players if they are overlapping a bomb
         {
+            uint8 BlockMask = std::numeric_limits<uint8>::max();
+
             TArray<FOverlapResult> OutOverlaps{};
             FVector Location = GetActorLocation();
             Location.Z = Utils::RoundToUnitCenter(Location.Z);
@@ -134,10 +125,11 @@ void ABomb::BeginPlay()
                 if (PlayerCharacter)
                 {
                     ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
-                    BlockPawnsMask ^= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+                    BlockMask ^= Utils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
                 }
             }
 
+            BlockPawnsMask = BlockMask;
             OnRep_BlockPawns();
         }
 
@@ -147,7 +139,7 @@ void ABomb::BeginPlay()
         FVector Location = GetActorLocation();
         auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BOMB);
         GridNavMesh->SetTileCost(Location, Cost);
-        GridNavMesh->SetTileTimeout(Location, AGridNavMesh::TIMEOUT_DEFAULT);
+        GridNavMesh->SetTileTimeout(Location, AGridNavMesh::TIMEOUT_UNSET);
 	}
 }
 
@@ -169,7 +161,7 @@ void ABomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* O
 
 void ABomb::OnRep_BlockPawns()
 {
-	for (uint32 Index = 0; Index < GetNum(Utils::PlayerECCs); Index++)
+	for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
 	{
 		if (BlockPawnsMask & (1 << Index))
 		{
@@ -189,19 +181,15 @@ bool ABomb::IsBlockingExplosion_Implementation()
 
 void ABomb::BlowUp_Implementation()
 {
+    check(HasAuthority());
+
     if (bExplosionTriggered)
     {
         return;
     }
 
-    // TODO HasAuthority?
-
-    float CurrentExplosionTimeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
-
-    float CurrentLifeSpanTimeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_LifeSpanExpired);
-
     auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
-    if (HasAuthority() && GridNavMesh)
+    if (GridNavMesh)
     {
         FVector Location = GetActorLocation();
         GridNavMesh->SetTileCost(Location, 1);
@@ -211,9 +199,9 @@ void ABomb::BlowUp_Implementation()
 
     OnBombExploded.Broadcast();
 
-    MeshComponent->DestroyComponent();
-
-    OverlapComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    // Allow going through the bomb.
+    BlockPawnsMask = 0;
+    OnRep_BlockPawns();
 }
 
 void ABomb::LifeSpanExpired()
@@ -223,7 +211,7 @@ void ABomb::LifeSpanExpired()
     {
         UpdateExplosionConstraints();
 
-        SetExplosionTilesNavTimeout(GridNavMesh, AGridNavMesh::TIMEOUT_DEFAULT);
+        SetExplosionTilesNavTimeout(GridNavMesh, AGridNavMesh::TIMEOUT_UNSET);
     }
 
     Destroy();
@@ -231,10 +219,7 @@ void ABomb::LifeSpanExpired()
 
 void ABomb::BeginExplosion()
 {
-	if (!HasAuthority())
-	{
-		return;
-	}
+    check(HasAuthority());
 
     bExplosionTriggered = true;
 
@@ -249,7 +234,7 @@ void ABomb::BeginExplosion()
 	}
 
     // Left
-    for (uint8 Index = 1; Index <= ExplosionInfo.Left.Blocks; Index++)
+    for (int32 Index = 1; Index <= ExplosionInfo.LeftTiles; Index++)
     {
         FVector Location = GetActorLocation();
         Location.X = Utils::RoundToUnitCenter(Location.X) - Utils::Unit * Index;
@@ -262,7 +247,7 @@ void ABomb::BeginExplosion()
     }
 
     // Right
-    for (uint8 Index = 1; Index <= ExplosionInfo.Right.Blocks; Index++)
+    for (int32 Index = 1; Index <= ExplosionInfo.RightTiles; Index++)
     {
         FVector Location = GetActorLocation();
         Location.X = Utils::RoundToUnitCenter(Location.X) + Utils::Unit * Index;
@@ -275,7 +260,7 @@ void ABomb::BeginExplosion()
     }
 
     // Up
-    for (uint8 Index = 1; Index <= ExplosionInfo.Up.Blocks; Index++)
+    for (int32 Index = 1; Index <= ExplosionInfo.UpTiles; Index++)
     {
         FVector Location = GetActorLocation();
         Location.X = Utils::RoundToUnitCenter(Location.X);
@@ -288,7 +273,7 @@ void ABomb::BeginExplosion()
     }
 
     // Down
-    for (uint8 Index = 1; Index <= ExplosionInfo.Down.Blocks; Index++)
+    for (int32 Index = 1; Index <= ExplosionInfo.DownTiles; Index++)
     {
         FVector Location = GetActorLocation();
         Location.X = Utils::RoundToUnitCenter(Location.X);
@@ -303,6 +288,8 @@ void ABomb::BeginExplosion()
 
 void ABomb::ScheduleTileExplosion(FTransform Transform, float Delay)
 {
+    check(HasAuthority());
+
     if (Delay != 0.f)
     {
         FTimerHandle TimerHandle;
@@ -319,6 +306,13 @@ void ABomb::ScheduleTileExplosion(FTransform Transform, float Delay)
 
 void ABomb::ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, FTransform Transform)
 {
+    if (World == nullptr)
+    {
+        return;
+    }
+
+    check(!World->IsNetMode(NM_Client));
+
     FVector Location = Transform.GetLocation();
     Location.Z = Utils::RoundToUnitCenter(Location.Z);
 
@@ -347,9 +341,9 @@ void ABomb::ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, F
     World->SpawnActorAbsolute(ExplosionClass, Transform);
 }
 
-uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
+int32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 {
-	uint32 BlockingDistance = std::numeric_limits<uint32>::max();
+	int32 ExplosionRadiusTiles = std::numeric_limits<int32>::max();
 
 	TArray<FHitResult> OutHits{};
 	GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, ECollisionChannel::ECC_GameExplosion);
@@ -380,7 +374,7 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
                 if (IExplosiveInterface::Execute_IsBlockingExplosion(Actor))
                 {
                     float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / Utils::Unit);
-                    BlockingDistance = static_cast<uint32>(DistanceRounded);
+                    ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 
                     break;
                 }
@@ -390,11 +384,11 @@ uint32 ABomb::LineTraceExplosion(FVector Start, FVector End)
 		{
             // Static walls
 			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / Utils::Unit);
-			BlockingDistance = static_cast<uint32>(DistanceRounded);
+            ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 		}
 	}
 
-	return BlockingDistance;
+	return ExplosionRadiusTiles;
 }
 
 void ABomb::UpdateExplosionConstraints()
@@ -404,68 +398,68 @@ void ABomb::UpdateExplosionConstraints()
     // Left
     {
         FVector End = GetActorLocation();
-        End.X = Utils::RoundToUnitCenter(End.X) - Utils::Unit * ExplosionRadiusTiles;
+        End.X = Utils::RoundToUnitCenter(End.X) - Utils::Unit * ExplosionMaxRadiusTiles;
 
-        uint64 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.Left.Blocks = std::min(ExplosionRadiusTiles, Constraint);
+        int32 Constraint = LineTraceExplosion(Start, End);
+        ExplosionInfo.LeftTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
     }
 
     // Right
     {
         FVector End = GetActorLocation();
-        End.X = Utils::RoundToUnitCenter(End.X) + Utils::Unit * ExplosionRadiusTiles;
+        End.X = Utils::RoundToUnitCenter(End.X) + Utils::Unit * ExplosionMaxRadiusTiles;
 
-        uint64 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.Right.Blocks = std::min(ExplosionRadiusTiles, Constraint);
+        int32 Constraint = LineTraceExplosion(Start, End);
+        ExplosionInfo.RightTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
     }
 
     // Up
     {
         FVector End = GetActorLocation();
-        End.Y = Utils::RoundToUnitCenter(End.Y) - Utils::Unit * ExplosionRadiusTiles;
+        End.Y = Utils::RoundToUnitCenter(End.Y) - Utils::Unit * ExplosionMaxRadiusTiles;
 
-        uint64 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.Up.Blocks = std::min(ExplosionRadiusTiles, Constraint);
+        int32 Constraint = LineTraceExplosion(Start, End);
+        ExplosionInfo.UpTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
     }
 
     // Down
     {
         FVector End = GetActorLocation();
-        End.Y = Utils::RoundToUnitCenter(End.Y) + Utils::Unit * ExplosionRadiusTiles;
+        End.Y = Utils::RoundToUnitCenter(End.Y) + Utils::Unit * ExplosionMaxRadiusTiles;
 
-        uint64 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.Down.Blocks = std::min(ExplosionRadiusTiles, Constraint);
+        int32 Constraint = LineTraceExplosion(Start, End);
+        ExplosionInfo.DownTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
     }
 }
 
 void ABomb::SetExplosionTilesNavTimeout(AGridNavMesh* GridNavMesh, float BombExplosionTimeout)
 {
-    for (uint32 Index = 1; Index <= ExplosionRadiusTiles; Index++)
+    for (int32 Index = 1; Index <= ExplosionMaxRadiusTiles; Index++)
     {
         float Timeout = BombExplosionTimeout + TileExplosionDelay * Index;
 
-        if (Index <= ExplosionInfo.Left.Blocks)
+        if (Index <= ExplosionInfo.LeftTiles)
         {
             FVector Location = GetActorLocation();
             Location.X = Utils::RoundToUnitCenter(Location.X) - Utils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
-        if (Index <= ExplosionInfo.Right.Blocks)
+        if (Index <= ExplosionInfo.RightTiles)
         {
             FVector Location = GetActorLocation();
             Location.X = Utils::RoundToUnitCenter(Location.X) + Utils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
-        if (Index <= ExplosionInfo.Up.Blocks)
+        if (Index <= ExplosionInfo.UpTiles)
         {
             FVector Location = GetActorLocation();
             Location.Y = Utils::RoundToUnitCenter(Location.Y) - Utils::Unit * Index;
             SetTileTimeout(GridNavMesh, Location, Timeout);
         }
 
-        if (Index <= ExplosionInfo.Down.Blocks)
+        if (Index <= ExplosionInfo.DownTiles)
         {
             FVector Location = GetActorLocation();
             Location.Y = Utils::RoundToUnitCenter(Location.Y) + Utils::Unit * Index;
@@ -487,17 +481,19 @@ void ABomb::SetTileTimeout(AGridNavMesh* GridNavMesh, FVector Location, float Ti
     }
     else
     {
-        GridNavMesh->SetTileTimeout(Location, AGridNavMesh::TIMEOUT_DEFAULT);
+        GridNavMesh->SetTileTimeout(Location, AGridNavMesh::TIMEOUT_UNSET);
     }
 }
 
 void ABomb::ExplosionTimeoutExpired()
 {
-    BlowUp_Implementation();
+    Execute_BlowUp(this);
 }
 
 void ABomb::SetChainExplosionLifeSpan(float Timeout)
 {
+    check(HasAuthority());
+
     if (bExplosionTriggered)
     {
         return;
@@ -507,6 +503,6 @@ void ABomb::SetChainExplosionLifeSpan(float Timeout)
     if (CurrentExplosionTimeout != -1.f && CurrentExplosionTimeout > Timeout)
     {
         GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &ABomb::ExplosionTimeoutExpired, Timeout);
-        GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AActor::LifeSpanExpired, Timeout + TileExplosionDelay * ExplosionRadiusTiles);
+        GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AActor::LifeSpanExpired, Timeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
     }
 }

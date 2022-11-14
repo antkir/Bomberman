@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "EnvironmentQuery/EnvQueryTest.h"
+
 #include "EnvQueryTest_Bombs.generated.h"
 
 /**
@@ -22,8 +23,12 @@ public:
 
     virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
 
+private:
+
     virtual FText GetDescriptionTitle() const override;
     virtual FText GetDescriptionDetails() const override;
+
+protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "Parameters")
     FAIDataProviderBoolValue AddMovementStartDelay;

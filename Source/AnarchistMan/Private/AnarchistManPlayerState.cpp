@@ -6,6 +6,12 @@
 
 AAnarchistManPlayerState::AAnarchistManPlayerState()
 {
+    bIsDead = false;
+
+    RoundWins = 0;
+
+    ActiveBombsCount = 0;
+
     PlayerColor = FColor(255, 255, 255);
 }
 
@@ -29,7 +35,7 @@ void AAnarchistManPlayerState::SetPlayerAlive()
     bIsDead = false;
 }
 
-bool AAnarchistManPlayerState::IsDead()
+bool AAnarchistManPlayerState::IsDead() const
 {
     return bIsDead;
 }
@@ -39,7 +45,7 @@ void AAnarchistManPlayerState::WinRound()
     RoundWins++;
 }
 
-uint8 AAnarchistManPlayerState::GetRoundWins()
+uint8 AAnarchistManPlayerState::GetRoundWins() const
 {
     return RoundWins;
 }
@@ -54,17 +60,19 @@ void AAnarchistManPlayerState::SetPlayerColor(FColor Color)
     PlayerColor = Color;
 }
 
-FColor AAnarchistManPlayerState::GetPlayerColor()
+FColor AAnarchistManPlayerState::GetPlayerColor() const
 {
     return PlayerColor;
 }
 
-void AAnarchistManPlayerState::SetActiveBombsCount(uint32 Count)
+void AAnarchistManPlayerState::SetActiveBombsCount(int32 Count)
 {
+    check(Count >= 0);
+
     ActiveBombsCount = Count;
 }
 
-uint32 AAnarchistManPlayerState::GetActiveBombsCount()
+int32 AAnarchistManPlayerState::GetActiveBombsCount() const
 {
     return ActiveBombsCount;
 }

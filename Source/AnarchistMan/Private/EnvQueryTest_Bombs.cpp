@@ -2,22 +2,18 @@
 
 #include "EnvQueryTest_Bombs.h"
 
-#include "Bomb.h"
-#include "BreakableBlock.h"
-#include "GridNavMesh.h"
-#include "Utils.h"
-
-#include "EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h"
-#include "EnvironmentQuery/Contexts/EnvQueryContext_Querier.h"
-#include <Kismet/GameplayStatics.h>
+#include <EnvironmentQuery/Items/EnvQueryItemType_VectorBase.h>
 #include <NavigationSystem.h>
 
-#define LOCTEXT_NAMESPACE "EnvQueryGenerator"
+#include <GridNavMesh.h>
+#include <Utils.h>
 
 UEnvQueryTest_Bombs::UEnvQueryTest_Bombs(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
     Cost = EEnvTestCost::High;
+
     ValidItemType = UEnvQueryItemType_VectorBase::StaticClass();
+
     SetWorkOnFloatValues(true);
 }
 
@@ -63,8 +59,8 @@ void UEnvQueryTest_Bombs::RunTest(FEnvQueryInstance& QueryInstance) const
 
     int32 ItemsNum = QueryInstance.Items.Num();
 
-    TArray<int64> ReachableTilesCost;
-    GridNavMesh->GetReachableTiles(ActorLocation, ReachableTilesCost, AddMovementStartDelay.GetValue());
+    TArray<float> ReachableTilesCost;
+    GridNavMesh->GetReachableTiles(Cast<APawn>(QueryOwner)->GetController(), ReachableTilesCost, AddMovementStartDelay.GetValue());
 
     FEnvQueryInstance::ItemIterator It(this, QueryInstance);
     It.IgnoreTimeLimit();
@@ -78,8 +74,7 @@ void UEnvQueryTest_Bombs::RunTest(FEnvQueryInstance& QueryInstance) const
         if (ReachableTilesCost.IsValidIndex(NodeRef) &&
             ReachableTilesCost[NodeRef] != TNumericLimits<int64>::Max() &&
             GridNavMesh->GetTileCost(ItemLocation) <= ETileNavCost::DEFAULT &&
-            // TODO set better score to biggest timeout tiles (2022-10-03 16-36-44.mp4).
-            GridNavMesh->GetTileTimeout(ItemLocation) == AGridNavMesh::TIMEOUT_DEFAULT)
+            GridNavMesh->GetTileTimeout(ItemLocation) == AGridNavMesh::TIMEOUT_UNSET)
         {
             Score = float(ReachableTilesCost[NodeRef]);
         }
@@ -92,13 +87,10 @@ void UEnvQueryTest_Bombs::RunTest(FEnvQueryInstance& QueryInstance) const
 
 FText UEnvQueryTest_Bombs::GetDescriptionTitle() const
 {
-    return FText::FromString(FString::Printf(TEXT("%s"),
-                                             *Super::GetDescriptionTitle().ToString()));
+    return FText::FromString(FString::Printf(TEXT("%s"), *Super::GetDescriptionTitle().ToString()));
 }
 
 FText UEnvQueryTest_Bombs::GetDescriptionDetails() const
 {
     return DescribeBoolTestParams("");
 }
-
-#undef LOCTEXT_NAMESPACE

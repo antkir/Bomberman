@@ -37,16 +37,17 @@ namespace Utils {
 
 constexpr float Unit = 100.f;
 
-constexpr ECollisionChannel PlayerECCs[]
+constexpr uint8 MAX_PLAYERS = 4;
+
+constexpr ECollisionChannel PlayerECCs[MAX_PLAYERS]
 {
 	ECC_Pawn1,
 	ECC_Pawn2,
 	ECC_Pawn3,
-	ECC_Pawn4,
-    ECC_Pawn
+	ECC_Pawn4
 };
 
-constexpr FColor PlayerColors[]
+constexpr FColor PlayerColors[MAX_PLAYERS]
 {
 	FColor(255, 0, 0),
 	FColor(0, 255, 0),
@@ -54,33 +55,33 @@ constexpr FColor PlayerColors[]
 	FColor(255, 255, 0),
 };
 
-inline float RoundToUnitCenter(float Num)
+FORCEINLINE float RoundToUnitCenter(float Num)
 {
-    return FMath::RoundToNegativeInfinity(Num / Unit) * Unit + Unit / 2;
+    return FMath::Floor(Num / Unit) * Unit + Unit / 2;
 }
 
-inline FVector RoundToUnitCenter(FVector Vector)
+FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
 {
-    Vector.X = FMath::RoundToNegativeInfinity(Vector.X / Unit) * Unit + Unit / 2;
-    Vector.Y = FMath::RoundToNegativeInfinity(Vector.Y / Unit) * Unit + Unit / 2;
-    Vector.Z = FMath::RoundToNegativeInfinity(Vector.Z / Unit) * Unit + Unit / 2;
+    Vector.X = RoundToUnitCenter(Vector.X);
+    Vector.Y = RoundToUnitCenter(Vector.Y);
+    Vector.Z = RoundToUnitCenter(Vector.Z);
     return Vector;
 }
 
-inline uint32 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
+FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
 {
 	switch (ECC)
 	{
 	case ECC_Pawn1:
-		return 1;
+		return 1 << 0;
 	case ECC_Pawn2:
-		return 2;
+		return 1 << 1;
 	case ECC_Pawn3:
-		return 4;
+		return 1 << 2;
 	case ECC_Pawn4:
-        return 8;
+        return 1 << 3;
 	default:
-		return 16;
+		return 1 << 4;
 	}
 }
 

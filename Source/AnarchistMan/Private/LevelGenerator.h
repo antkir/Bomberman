@@ -38,25 +38,25 @@ private:
 
 protected:
 
-	UPROPERTY(EditAnywhere, Category = "Properties")
-	uint64 Rows;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Properties", meta = (ClampMin = "0"))
+    int32 Rows;
 
-	UPROPERTY(EditAnywhere, Category = "Properties")
-	uint64 Columns;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Properties", meta = (ClampMin = "0"))
+	int32 Columns;
 
-	UPROPERTY(EditAnywhere, Category = "Properties")
+	UPROPERTY(EditAnywhere, Category = "Properties", meta = (ClampMin = "0.0", ClampMax = "100.0"))
 	float BreakableBlockSpawnChance;
 
-    UPROPERTY(EditAnywhere, Category = "Properties")
+    UPROPERTY(EditAnywhere, Category = "Properties", meta = (ClampMin = "0.0", ClampMax = "100.0"))
     float PowerUpSpawnChance;
 
-    UPROPERTY(EditAnywhere, Category = "Properties")
+    UPROPERTY(EditAnywhere, Category = "Properties", meta = (ClampMin = "0.0", ClampMax = "100.0"))
     float PowerUpsBatchSpawnChance;
 
 	UPROPERTY(EditAnywhere, Category = "Classes")
 	TSubclassOf<ABreakableBlock> BreakableBlockClass;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Classes")
+    UPROPERTY(EditAnywhere, Category = "Classes")
     TArray<TSubclassOf<APowerUp>> PowerUpClasses;
 
 };

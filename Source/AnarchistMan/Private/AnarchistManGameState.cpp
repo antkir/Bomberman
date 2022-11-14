@@ -6,6 +6,8 @@
 
 AAnarchistManGameState::AAnarchistManGameState()
 {
+    PlayersAlive = 0;
+
     RoundsToWin = 3;
 }
 
@@ -19,34 +21,46 @@ void AAnarchistManGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 void AAnarchistManGameState::AddPlayerState(APlayerState* PlayerState)
 {
     Super::AddPlayerState(PlayerState);
-    PlayersAlive++;
+
+    if (HasAuthority())
+    {
+        PlayersAlive++;
+    }
 }
 
 void AAnarchistManGameState::RemovePlayerState(APlayerState* PlayerState)
 {
     Super::RemovePlayerState(PlayerState);
-    PlayersAlive--;
+
+    if (HasAuthority())
+    {
+        PlayersAlive--;
+    }
 }
 
 void AAnarchistManGameState::PlayerDeath()
 {
+    check(HasAuthority());
+
     if (PlayersAlive > 0)
     {
         PlayersAlive--;
     }
 }
 
-uint64 AAnarchistManGameState::GetPlayersAlive()
+uint8 AAnarchistManGameState::GetPlayersAlive() const
 {
     return PlayersAlive;
 }
 
-void AAnarchistManGameState::SetPlayersAlive(uint64 Num)
+void AAnarchistManGameState::SetPlayersAlive(uint8 Num)
 {
+    check(HasAuthority());
+
     PlayersAlive = Num;
 }
 
-uint8 AAnarchistManGameState::GetRoundsToWin()
+uint8 AAnarchistManGameState::GetRoundsToWin() const
 {
     return RoundsToWin;
 }

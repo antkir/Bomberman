@@ -27,21 +27,21 @@ public:
 
     void SetPlayerAlive();
 
-    bool IsDead();
+    bool IsDead() const;
 
     void WinRound();
 
-    uint8 GetRoundWins();
+    uint8 GetRoundWins() const;
 
     void ResetRoundWins();
 
     void SetPlayerColor(FColor Color);
 
-    FColor GetPlayerColor();
+    FColor GetPlayerColor() const;
 
-    void SetActiveBombsCount(uint32 Count);
+    void SetActiveBombsCount(int32 Count);
 
-    uint32 GetActiveBombsCount();
+    int32 GetActiveBombsCount() const;
 
 protected:
 
@@ -55,6 +55,6 @@ protected:
     FColor PlayerColor;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
-    int64 ActiveBombsCount;
+    int32 ActiveBombsCount;
 	
 };

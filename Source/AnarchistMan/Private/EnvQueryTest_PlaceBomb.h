@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "EnvironmentQuery/EnvQueryTest.h"
+
 #include "EnvQueryTest_PlaceBomb.generated.h"
 
 /**
@@ -21,6 +22,8 @@ public:
 public:
 
     virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
+
+private:
 
     virtual FText GetDescriptionTitle() const override;
     virtual FText GetDescriptionDetails() const override;

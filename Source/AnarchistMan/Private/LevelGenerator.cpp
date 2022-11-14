@@ -2,14 +2,13 @@
 
 #include "LevelGenerator.h"
 
+#include <Engine/Public/EngineUtils.h>
+#include <Kismet/GameplayStatics.h>
+
 #include <BreakableBlock.h>
 #include <PowerUp.h>
 #include <Utils.h>
 
-#include <Engine/Public/EngineUtils.h>
-#include <Kismet/GameplayStatics.h>
-
-// Sets default values
 ALevelGenerator::ALevelGenerator()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -18,9 +17,9 @@ ALevelGenerator::ALevelGenerator()
 	Rows = 5;
 	Columns = 5;
 
-    BreakableBlockSpawnChance = 50.f;
-    PowerUpSpawnChance = 10.f;
-    PowerUpsBatchSpawnChance = 10.f;
+    BreakableBlockSpawnChance = 100.f;
+    PowerUpSpawnChance = 100.f;
+    PowerUpsBatchSpawnChance = 100.f;
 }
 
 // Called when the game starts or when spawned
@@ -47,8 +46,7 @@ void ALevelGenerator::BlockDestroyed(AActor* DestroyedActor)
         return;
     }
 
-    float Value = FMath::Clamp(PowerUpSpawnChance, 0.f, 100.f);
-    if (FMath::RandHelper(100) >= Value)
+    if (FMath::RandHelper(100) >= PowerUpSpawnChance)
     {
         return;
     }
@@ -58,7 +56,7 @@ void ALevelGenerator::BlockDestroyed(AActor* DestroyedActor)
     Location.Z += Utils::Unit / 2;
     Transform.SetLocation(Location);
     Transform.SetRotation(FQuat::Identity);
-    uint8 RandomIndex = FMath::RandHelper(PowerUpClasses.Num());
+    int64 RandomIndex = FMath::RandHelper(PowerUpClasses.Num());
     GetWorld()->SpawnActorAbsolute<APowerUp>(PowerUpClasses[RandomIndex], Transform);
 }
 
@@ -92,8 +90,7 @@ void ALevelGenerator::RegenerateLevel()
 				continue;
 			}
 
-            float Value = FMath::Clamp(BreakableBlockSpawnChance, 0.f, 100.f);
-            if (FMath::RandHelper(100) >= Value)
+            if (FMath::RandHelper(100) >= BreakableBlockSpawnChance)
             {
                 continue;
             }
@@ -129,8 +126,7 @@ void ALevelGenerator::SpawnPowerUpsBatch()
                 continue;
             }
 
-            float Value = FMath::Clamp(PowerUpsBatchSpawnChance, 0.f, 100.f);
-            if (FMath::RandHelper(100) >= Value)
+            if (FMath::RandHelper(100) >= PowerUpsBatchSpawnChance)
             {
                 continue;
             }
@@ -154,7 +150,7 @@ void ALevelGenerator::SpawnPowerUpsBatch()
             FTransform Transform;
             Transform.SetLocation(Location);
             Transform.SetRotation(FQuat::Identity);
-            uint8 RandomIndex = FMath::RandHelper(PowerUpClasses.Num());
+            int64 RandomIndex = FMath::RandHelper(PowerUpClasses.Num());
             GetWorld()->SpawnActorAbsolute<APowerUp>(PowerUpClasses[RandomIndex], Transform);
         }
     }

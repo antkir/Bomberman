@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "ExplosiveInterface.h"
-
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
+#include "ExplosiveInterface.h"
 
 #include "Bomb.generated.h"
 
@@ -18,18 +18,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBombExploded);
 
 struct FExplosionInfo
 {
-    struct FExplosionSideInfo
-    {
-        uint64 Blocks;
-        bool Blocking;
-    };
-
-    FExplosionSideInfo Left;
-    FExplosionSideInfo Right;
-    FExplosionSideInfo Up;
-    FExplosionSideInfo Down;
-
-    AExplosion* CenterExplosion;
+    int32 LeftTiles;
+    int32 RightTiles;
+    int32 UpTiles;
+    int32 DownTiles;
 };
 
 UCLASS()
@@ -44,7 +36,7 @@ public:
 
 public:
 
-    void SetExplosionRadiusTiles(uint64 Blocks);
+    void SetExplosionRadiusTiles(int32 Blocks);
 
     virtual void Tick(float DeltaTime) override;
 
@@ -73,7 +65,7 @@ private:
 
     static void ExplodeTile(UWorld* World, TSubclassOf<AExplosion> ExplosionClass, FTransform Transform);
 
-    uint32 LineTraceExplosion(FVector Start, FVector End);
+    int32 LineTraceExplosion(FVector Start, FVector End);
 
     void UpdateExplosionConstraints();
 
@@ -87,52 +79,38 @@ private:
 
 public:
 
+    UPROPERTY(BlueprintAssignable)
     FBombExploded OnBombExploded;
 
 protected:
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UBoxComponent* OverlapComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USkeletalMeshComponent* MeshComponent;
-
-	UPROPERTY(EditAnywhere, Category = "Parameters")
-	UAnimSequence* IdleAnimation;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float ExplosionTimeout;
 
-	UPROPERTY(EditAnywhere, Category = "Parameters")
-	TSubclassOf<AExplosion> ExplosionClass;
-
-	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
-	uint16 BlockPawnsMask;
-
     UPROPERTY(EditAnywhere, Category = "Parameters")
     float TileExplosionDelay;
 
+    UPROPERTY(EditAnywhere, Category = "Classes")
+    TSubclassOf<AExplosion> ExplosionClass;
+
+    UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
+    uint8 BlockPawnsMask;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ExplosionMaxRadiusTiles;
+
+    UPROPERTY(BlueprintReadOnly)
+	bool bExplosionTriggered;
+
 private:
 
-	struct ExplosionInfo
-	{
-        struct InfoDirection
-        {
-            uint64 Blocks;
-            bool Blocking;
-        };
-		
-        InfoDirection Left;
-        InfoDirection Right;
-        InfoDirection Up;
-        InfoDirection Down;
-
-        AExplosion* CenterExplosion;
-	} ExplosionInfo;
-
-    uint64 ExplosionRadiusTiles;
-
-	bool bExplosionTriggered;
+    FExplosionInfo ExplosionInfo;
 
     FTimerHandle TimerHandle_ExplosionTimeoutExpired;
 };

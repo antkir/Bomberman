@@ -2,18 +2,16 @@
 
 #include "PlayerCharacter.h"
 
-#include <AnarchistManGameState.h>
-#include <AnarchistManPlayerState.h>
-#include <Bomb.h>
-#include <Utils.h>
-
-#include <Blueprint/UserWidget.h>
 #include <Camera/CameraComponent.h>
 #include <Components/CapsuleComponent.h>
 #include <GameFramework/CharacterMovementComponent.h>
 #include <Net/UnrealNetwork.h>
 
-// Sets default values
+#include <AnarchistManGameState.h>
+#include <AnarchistManPlayerState.h>
+#include <Bomb.h>
+#include <Utils.h>
+
 APlayerCharacter::APlayerCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -29,8 +27,8 @@ APlayerCharacter::APlayerCharacter()
     bInputEnabled = true;
     bInvincible = true;
 
-    ExplosionRadiusTiles = 2;
-    ActiveBombsLimit = 3;
+    ExplosionRadiusTiles = 1;
+    ActiveBombsLimit = 1;
 }
 
 // Called to bind functionality to input
@@ -52,6 +50,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
     DOREPLIFETIME(APlayerCharacter, bInputEnabled);
     DOREPLIFETIME(APlayerCharacter, bInvincible);
+    DOREPLIFETIME(APlayerCharacter, MaxWalkSpeed);
 }
 
 bool APlayerCharacter::IsBlockingExplosion_Implementation()
@@ -68,6 +67,10 @@ void APlayerCharacter::BeginPlay()
         UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
         return;
     }
+
+    DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+
+    MaxWalkSpeed = DefaultMaxWalkSpeed;
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -79,6 +82,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 	CameraLocation.Y += CameraLocationOffset.Y;
 	CameraLocation.Z += CameraLocationOffset.Z;
 	CameraComponent->SetWorldLocation(CameraLocation);
+
+    if (!bInputEnabled)
+    {
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+    }
+    else
+    {
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+    }
+
+    GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
 void APlayerCharacter::OnRep_PlayerState()
@@ -89,8 +103,13 @@ void APlayerCharacter::OnRep_PlayerState()
     {
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
 
-        uint32 PlayerId = AMPlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
+        int32 PlayerId = AMPlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
         GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+
+        for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
+        {
+            GetCapsuleComponent()->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+        }
 
         FColor PlayerColor = AMPlayerState->GetPlayerColor();
         UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
@@ -107,8 +126,13 @@ void APlayerCharacter::PossessedBy(AController* NewController)
         auto* AMGameState = GetWorld()->GetGameState<AAnarchistManGameState>();
         auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
 
-        uint32 PlayerId = AMPlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
+        int32 PlayerId = AMPlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
         GetCapsuleComponent()->SetCollisionObjectType(Utils::PlayerECCs[PlayerId]);
+
+        for (int32 Index = 0; Index < Utils::MAX_PLAYERS; Index++)
+        {
+            GetCapsuleComponent()->SetCollisionResponseToChannel(Utils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+        }
 
         FColor PlayerColor = AMPlayerState->GetPlayerColor();
         UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
@@ -125,18 +149,14 @@ void APlayerCharacter::BlowUp_Implementation()
         return;
     }
 
-    auto* PlayerController = Cast<APlayerController>(GetController());
-    if (PlayerController)
+    if (Controller)
     {
-        PlayerController->UnPossess();
+        OnPlayerCharacterDeath.Broadcast(Controller);
+
+        Controller->UnPossess();
     }
 
     Destroy();
-
-    if (PlayerController)
-    {
-        OnPlayerCharacterDeath.Broadcast(PlayerController);
-    }
 }
 
 void APlayerCharacter::SetInputEnabled(bool InputEnabled)
@@ -151,7 +171,7 @@ void APlayerCharacter::SetInvincible(bool Invincible)
 
 void APlayerCharacter::IncreaseMovementSpeed(float Percentage)
 {
-    GetCharacterMovement()->MaxWalkSpeed += 600.f * Percentage / 100.f;
+    MaxWalkSpeed += DefaultMaxWalkSpeed * Percentage / 100.f;
 }
 
 void APlayerCharacter::IncrementExplosionRadiusTiles()
@@ -164,45 +184,41 @@ void APlayerCharacter::IncrementActiveBombsLimit()
     ActiveBombsLimit++;
 }
 
+int32 APlayerCharacter::GetExplosionRadiusTiles() const
+{
+    return ExplosionRadiusTiles;
+}
+
+float APlayerCharacter::GetDefaultMaxWalkSpeed() const
+{
+    return DefaultMaxWalkSpeed;
+}
+
 void APlayerCharacter::MoveVertical(float Value)
 {
-    if (!bInputEnabled)
+    if (Value != 0.f)
     {
-        return;
-    }
-
-    if (Value != 0.f) {
-        float Rotation = Value > 0.f ? 90.f : -90.f;
-        Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
-
-        // add movement in that direction
+        // Add movement in that direction.
         AddMovementInput(FVector::YAxisVector, Value);
     }
 }
 
 void APlayerCharacter::MoveHorizontal(float Value)
 {
-    if (!bInputEnabled)
+    if (Value != 0.f) 
     {
-        return;
-    }
-
-    if (Value != 0.f) {
-        float Rotation = Value > 0.f ? 0.f : 180.f;
-        Controller->SetControlRotation(FRotator(0.f, Rotation, 0.f));
-
-        // add movement in that direction
+        // Add movement in that direction.
         AddMovementInput(FVector::XAxisVector, Value);
     }
 }
 
 void APlayerCharacter::OnBombExploded()
 {
-    auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-    if (AMPlayerState)
+    auto* AmPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+    if (AmPlayerState)
     {
-        uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-        AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+        int32 ActiveBombsCount = AmPlayerState->GetActiveBombsCount();
+        AmPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
     }
 }
 
@@ -224,7 +240,7 @@ bool APlayerCharacter::CanPlaceBomb()
     Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
     Location = Utils::RoundToUnitCenter(Location);
 
-    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 20));
+    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 8, Utils::Unit / 8, Utils::Unit));
     GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
 
     for (const FOverlapResult& Overlap : OutOverlaps)
@@ -253,9 +269,10 @@ void APlayerCharacter::PlaceBomb_Implementation()
 
     if (GetPlayerState())
     {
-        auto* AMPlayerState = GetPlayerState<AAnarchistManPlayerState>();
-        uint32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-        AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
+        auto* AmPlayerState = GetPlayerState<AAnarchistManPlayerState>();
+        check(AmPlayerState);
+        int32 ActiveBombsCount = AmPlayerState->GetActiveBombsCount();
+        AmPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
     }
 
     FVector Location = GetActorLocation();

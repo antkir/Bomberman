@@ -2,23 +2,23 @@
 
 #include "AnarchistManGameMode.h"
 
+#include <AIModule/Classes/AIController.h>
+#include <Camera/CameraActor.h>
+#include <Engine/Public/EngineUtils.h>
+#include <GameFramework/GameSession.h>
+#include <GameFramework/PlayerStart.h>
+#include <Kismet/GameplayStatics.h>
+
+#include <AMGameInstance.h>
 #include <AnarchistManGameState.h>
 #include <AnarchistManPlayerController.h>
 #include <AnarchistManPlayerState.h>
 #include <Bomb.h>
-#include <BreakableBlock.h>
 #include <Explosion.h>
 #include <GridNavMesh.h>
 #include <LevelGenerator.h>
 #include <PlayerCharacter.h>
 #include <Utils.h>
-
-#include <Blueprint/UserWidget.h>
-#include <Camera/CameraComponent.h>
-#include <Engine/PlayerStartPIE.h>
-#include <Engine/Public/EngineUtils.h>
-#include <GameFramework/PlayerStart.h>
-#include <Kismet/GameplayStatics.h>
 
 namespace MatchState
 {
@@ -31,6 +31,8 @@ namespace MatchState
 
 AAnarchistManGameMode::AAnarchistManGameMode()
 {
+    bResetLevelOnBeginPreGame = true;
+
     bStartPlayersAsSpectators = true;
 
     CurrentMatchState = MatchState::Lobby;
@@ -39,23 +41,32 @@ AAnarchistManGameMode::AAnarchistManGameMode()
 
     CameraBlendTime = 1.f;
 
-    DrawTimeThreshold = 0.15f;
+    RoundDrawTimeThreshold = 0.15f;
+
+    RecentDeaths = 0;
 }
 
 void AAnarchistManGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (LevelObserverCameraClass == nullptr)
+    if (GetLevelOverviewCamera() == nullptr)
     {
-        UE_LOG(LogGame, Error, TEXT("LevelObserverCamera property is not set!"));
+        UE_LOG(LogGame, Error, TEXT("Level Overview Camera instance must be present in this level!"));
     }
 
     AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
     if (LevelGeneratorActor == nullptr)
     {
-        UE_LOG(LogGame, Error, TEXT("At least one Level Generator must be present in this level!"));
+        UE_LOG(LogGame, Error, TEXT("Level Generator instance must be present in this level!"));
     }
+
+    if (AIControllerClass == nullptr)
+    {
+        UE_LOG(LogGame, Error, TEXT("AIControllerClass property is not set!"));
+    }
+
+    SpawnAIControllers();
 
     FTimerHandle TimerHandle;
     GetWorldTimerManager().SetTimer(TimerHandle, this, &AAnarchistManGameMode::BeginPreGame, 1.f);
@@ -84,36 +95,13 @@ void AAnarchistManGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
 
-    uint32 PlayerId = NewPlayer->PlayerState->GetPlayerId() % GetNum(Utils::PlayerECCs);
-    FString PlayerName;
-    switch (PlayerId)
-    {
-    case 0:
-        PlayerName = "Red";
-        break;
-    case 1:
-        PlayerName = "Green";
-        break;
-    case 2:
-        PlayerName = "Blue";
-        break;
-    case 3:
-        PlayerName = "Yellow";
-        break;
-    default:
-        PlayerName = "Default";
-    }
-    NewPlayer->PlayerState->SetPlayerName(PlayerName);
+    SetControllerName(NewPlayer);
+    SetControllerColor(NewPlayer);
 
-    auto* PlayerController = Cast<AAnarchistManPlayerController>(NewPlayer);
-    auto* AMPlayerState = PlayerController->GetPlayerState<AAnarchistManPlayerState>();
-    FColor PlayerColor = Utils::PlayerColors[PlayerId];
-    AMPlayerState->SetPlayerColor(PlayerColor);
-
-    AActor* LevelObserverCamera = UGameplayStatics::GetActorOfClass(this, LevelObserverCameraClass);
-    if (LevelObserverCamera)
+    ACameraActor* LevelOverviewCamera = GetLevelOverviewCamera();
+    if (LevelOverviewCamera)
     {
-        NewPlayer->SetViewTarget(LevelObserverCamera);
+        NewPlayer->SetViewTarget(LevelOverviewCamera);
     }
 
     RestartPlayer(NewPlayer);
@@ -126,77 +114,30 @@ void AAnarchistManGameMode::Destroyed()
     GetWorldTimerManager().ClearAllTimersForObject(this);
 }
 
-AActor* AAnarchistManGameMode::ChoosePlayerStart_Implementation(AController* Player)
-{
-    // Choose a player start
-    APlayerStart* FoundPlayerStart = nullptr;
-    UClass* PawnClass = GetDefaultPawnClassForController(Player);
-    APawn* PawnToFit = PawnClass ? PawnClass->GetDefaultObject<APawn>() : nullptr;
-    TArray<APlayerStart*> UnOccupiedStartPoints;
-    TArray<APlayerStart*> OccupiedStartPoints;
-    UWorld* World = GetWorld();
-
-    for (TActorIterator<APlayerStart> It(World); It; ++It)
-    {
-        APlayerStart* PlayerStart = *It;
-
-        FVector ActorLocation = PlayerStart->GetActorLocation();
-        FRotator ActorRotation = PlayerStart->GetActorRotation();
-        if (!World->EncroachingBlockingGeometry(PawnToFit, ActorLocation, ActorRotation))
-        {
-            UnOccupiedStartPoints.Add(PlayerStart);
-        }
-        else if (World->FindTeleportSpot(PawnToFit, ActorLocation, ActorRotation))
-        {
-            OccupiedStartPoints.Add(PlayerStart);
-        }
-    }
-
-    if (FoundPlayerStart == nullptr)
-    {
-        if (UnOccupiedStartPoints.Num() > 0)
-        {
-            int32 NumPlayers = GetNumPlayers();
-            if (NumPlayers <= UnOccupiedStartPoints.Num())
-            {
-                APlayerStart** FoundPlayerStartPointer = UnOccupiedStartPoints.FindByPredicate([&NumPlayers](APlayerStart* PlayerStart)
-                {
-                    return PlayerStart->PlayerStartTag.ToString() == FString::FromInt(NumPlayers);
-                });
-                if (FoundPlayerStartPointer)
-                {
-                    FoundPlayerStart = *FoundPlayerStartPointer;
-                }
-            }
-            else
-            {
-                FoundPlayerStart = UnOccupiedStartPoints[0];
-            }
-        }
-    }
-    return FoundPlayerStart;
-}
-
 void AAnarchistManGameMode::PlayerDeath(AController* Controller)
 {
+    auto* CurrentPlayerState = Controller->GetPlayerState<AAnarchistManPlayerState>();
+    check(CurrentPlayerState);
+    CurrentPlayerState->SetPlayerDead();
+
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
-    auto* PlayerController = Cast<AAnarchistManPlayerController>(Controller);
-    auto* PlayerState = PlayerController->GetPlayerState<AAnarchistManPlayerState>();
-
-    PlayerState->SetPlayerDead();
-
+    check(AMGameState);
     if (AMGameState->GetPlayersAlive() > 1)
     {
-        APlayerState* NextPlayerState = PlayerController->GetNextViewablePlayer(1);
-        auto* NextPawn = NextPlayerState->GetPawn<APlayerCharacter>();
+        AActor* NextViewTarget = GetNextViewTarget();
+        check(NextViewTarget);
 
-        for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
+        for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
         {
-            auto* AMInnerPlayerState = Cast<AAnarchistManPlayerState>(InnerPlayerState);
-            if (AMInnerPlayerState->IsDead())
+            auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
+            check(AMPlayerState);
+            if (AMPlayerState->IsDead())
             {
-                auto* InnerPlayerController = Cast<AAnarchistManPlayerController>(AMInnerPlayerState->GetPlayerController());
-                InnerPlayerController->SetViewTarget(NextPawn, CreateViewTargetTransitionParams(CameraBlendTime));
+                auto* AMPlayerController = Cast<AAnarchistManPlayerController>(AMPlayerState->GetOwningController());
+                if (AMPlayerController)
+                {
+                    AMPlayerController->SetViewTarget(NextViewTarget, CreateViewTargetTransitionParams(CameraBlendTime));
+                }
             }
         }
 
@@ -217,13 +158,15 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
                     auto* AAMPS = Cast<AAnarchistManPlayerState>(APS);
                     return !AAMPS->IsDead();
                 });
-                check(WinnerPlayerState != nullptr);
+
+                check(WinnerPlayerState);
 
                 AAnarchistManPlayerState* WinnerAMPlayerState = Cast<AAnarchistManPlayerState>(WinnerPlayerState->Get());
-
+                check(WinnerAMPlayerState);
                 WinnerAMPlayerState->WinRound();
 
-                auto* WinnerPlayerCharacter = WinnerAMPlayerState->GetPlayerController()->GetPawn<APlayerCharacter>();
+                auto* WinnerPlayerCharacter = WinnerAMPlayerState->GetOwningController()->GetPawn<APlayerCharacter>();
+                check(WinnerPlayerCharacter);
                 WinnerPlayerCharacter->SetInvincible(true);
 
                 if (WinnerAMPlayerState->GetRoundWins() < AMGameState->GetRoundsToWin())
@@ -248,7 +191,7 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
             }
 
             RecentDeaths--;
-        }, DrawTimeThreshold, false);
+        }, RoundDrawTimeThreshold, false);
     }
     else
     {
@@ -259,16 +202,16 @@ void AAnarchistManGameMode::PlayerDeath(AController* Controller)
         else
         {
             // Happens only when there is one player playing.
-            PlayerState->WinRound();
+            CurrentPlayerState->WinRound();
 
-            if (PlayerState->GetRoundWins() < AMGameState->GetRoundsToWin())
+            if (CurrentPlayerState->GetRoundWins() < AMGameState->GetRoundsToWin())
             {
-                FString PlayerName = PlayerState->GetPlayerName();
+                FString PlayerName = CurrentPlayerState->GetPlayerName();
                 BeginRoundOver(PlayerName);
             }
             else
             {
-                FString PlayerName = PlayerState->GetPlayerName();
+                FString PlayerName = CurrentPlayerState->GetPlayerName();
                 BeginGameOver(PlayerName);
             }
         }
@@ -284,6 +227,7 @@ void AAnarchistManGameMode::RestartGame()
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
         auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
+        check(AMPlayerState);
         AMPlayerState->ResetRoundWins();
     }
 
@@ -299,24 +243,26 @@ APawn* AAnarchistManGameMode::SpawnDefaultPawnFor_Implementation(AController* Ne
     
     FTransform Transform = FTransform(StartRotation, StartLocation);
     APawn* Pawn = SpawnDefaultPawnAtTransform(NewPlayer, Transform);
-
     auto* PlayerCharacter = Cast<APlayerCharacter>(Pawn);
-    PlayerCharacter->OnPlayerCharacterDeath.AddDynamic(this, &AAnarchistManGameMode::OnPlayerCharacterDeath);
-    if (CurrentMatchState == MatchState::Lobby)
+    if (PlayerCharacter)
     {
-        PlayerCharacter->SetInputEnabled(true);
-    }
-    else
-    {
-        PlayerCharacter->SetInputEnabled(false);
+        PlayerCharacter->OnPlayerCharacterDeath.AddDynamic(this, &AAnarchistManGameMode::OnPlayerCharacterDeath);
+        if (CurrentMatchState == MatchState::Lobby)
+        {
+            PlayerCharacter->SetInputEnabled(true);
+        }
+        else
+        {
+            PlayerCharacter->SetInputEnabled(false);
+        }
     }
 
     return PlayerCharacter;
 }
 
-void AAnarchistManGameMode::OnPlayerCharacterDeath(APlayerController* PlayerController)
+void AAnarchistManGameMode::OnPlayerCharacterDeath(AController* Controller)
 {
-    PlayerDeath(PlayerController);
+    PlayerDeath(Controller);
 }
 
 void AAnarchistManGameMode::BeginPreGame()
@@ -325,14 +271,12 @@ void AAnarchistManGameMode::BeginPreGame()
 
     for (TActorIterator<ABomb> It(GetWorld()); It; ++It)
     {
-        ABomb* Bomb = *It;
-        Bomb->Destroy();
+        It->Destroy();
     }
 
     for (TActorIterator<AExplosion> It(GetWorld()); It; ++It)
     {
-        AExplosion* Explosion = *It;
-        Explosion->Destroy();
+        It->Destroy();
     }
 
     if (bResetLevelOnBeginPreGame)
@@ -343,10 +287,9 @@ void AAnarchistManGameMode::BeginPreGame()
             GridNavMesh->ResetTiles();
         }
 
-        AActor* LevelGeneratorActor = UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass());
-        if (LevelGeneratorActor)
+        auto* LevelGenerator = Cast<ALevelGenerator>(UGameplayStatics::GetActorOfClass(this, ALevelGenerator::StaticClass()));
+        if (LevelGenerator)
         {
-            auto* LevelGenerator = Cast<ALevelGenerator>(LevelGeneratorActor);
             LevelGenerator->RegenerateLevel();
         }
     }
@@ -354,23 +297,27 @@ void AAnarchistManGameMode::BeginPreGame()
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
         auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
+        check(AMPlayerState);
         AMPlayerState->SetPlayerAlive();
 
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(AMPlayerState->GetPlayerController());
-        APawn* Pawn = PlayerController->GetPawn();
-        PlayerController->UnPossess();
+        AController* Controller = AMPlayerState->GetOwningController();
+
+        APawn* Pawn = Controller->GetPawn();
         if (Pawn)
         {
             Pawn->Destroy();
         }
 
-        RestartPlayer(PlayerController);
+        Controller->UnPossess();
 
-        PlayerController->ClientSetRotation(FRotator(0.f, 90.f, 0.f));
+        RestartPlayer(Controller);
+
+        Controller->ClientSetRotation(FRotator(0.f, 90.f, 0.f));
     }
 
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
-    AMGameState->SetPlayersAlive(GetNumPlayers());
+    check(AMGameState);
+    AMGameState->SetPlayersAlive(GameState->PlayerArray.Num());
 
     RecentDeaths = 0;
 
@@ -388,18 +335,25 @@ void AAnarchistManGameMode::BeginPreGame()
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        PlayerController->BeginPreGame(RoundCountdownTime);
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+        if (PlayerController)
+        {
+            PlayerController->BeginPreGame(RoundCountdownTime);
+        }
     }
 }
 
 void AAnarchistManGameMode::PrepareGame()
 {
-    for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
+    for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(InnerPlayerState->GetPlayerController());
-        auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
-        PlayerController->SetViewTarget(PlayerCharacter, CreateViewTargetTransitionParams(CameraBlendTime));
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+        if (PlayerController)
+        {
+            auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
+            check(PlayerCharacter);
+            PlayerController->SetViewTarget(PlayerCharacter, CreateViewTargetTransitionParams(CameraBlendTime));
+        }
     }
 
     FTimerHandle TimerHandle;
@@ -412,16 +366,17 @@ void AAnarchistManGameMode::BeginGame()
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        auto* PlayerCharacter = PlayerController->GetPawn<APlayerCharacter>();
+        AController* Controller = PlayerState->GetOwningController();
+        auto* PlayerCharacter = Controller->GetPawn<APlayerCharacter>();
+        check(PlayerCharacter);
         PlayerCharacter->SetInputEnabled(true);
         PlayerCharacter->SetInvincible(false);
-    }
 
-    for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
-    {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        PlayerController->BeginGame();
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(Controller);
+        if (PlayerController)
+        {
+            PlayerController->BeginGame();
+        }
     }
 }
 
@@ -429,21 +384,16 @@ void AAnarchistManGameMode::BeginRoundOver(FString PlayerName)
 {
     CurrentMatchState = MatchState::RoundOver;
 
-    if (LevelObserverCameraClass)
+    ACameraActor* LevelOverviewCamera = GetLevelOverviewCamera();
+    if (LevelOverviewCamera)
     {
-        AActor* LevelObserverCamera = UGameplayStatics::GetActorOfClass(this, LevelObserverCameraClass);
-
-        if (LevelObserverCamera)
+        for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
         {
-            for (const TObjectPtr<APlayerState>& InnerPlayerState : GameState->PlayerArray)
+            auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+            if (PlayerController)
             {
-                auto* PlayerController = Cast<AAnarchistManPlayerController>(InnerPlayerState->GetPlayerController());
-                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(CameraBlendTime));
+                PlayerController->SetViewTarget(LevelOverviewCamera, CreateViewTargetTransitionParams(CameraBlendTime));
             }
-        }
-        else
-        {
-            UE_LOG(LogGame, Error, TEXT("At least one Level Observer Camera must be present in this level!"));
         }
     }
 
@@ -452,8 +402,11 @@ void AAnarchistManGameMode::BeginRoundOver(FString PlayerName)
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        PlayerController->BeginRoundOver(PlayerName);
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+        if (PlayerController)
+        {
+            PlayerController->BeginRoundOver(PlayerName);
+        }
     }
 }
 
@@ -462,34 +415,132 @@ void AAnarchistManGameMode::BeginGameOver(FString PlayerName)
     CurrentMatchState = MatchState::GameOver;
 
     auto* AMGameState = GetGameState<AAnarchistManGameState>();
+    check(AMGameState);
 
-    if (LevelObserverCameraClass)
+    ACameraActor* LevelOverviewCamera = GetLevelOverviewCamera();
+    if (LevelOverviewCamera)
     {
-        AActor* LevelObserverCamera = UGameplayStatics::GetActorOfClass(this, LevelObserverCameraClass);
-
-        if (LevelObserverCamera)
+        for (const TObjectPtr<APlayerState>& PlayerState : AMGameState->PlayerArray)
         {
-            for (const TObjectPtr<APlayerState>& PlayerState : AMGameState->PlayerArray)
+            auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+            if (PlayerController)
             {
-                auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-                PlayerController->SetViewTarget(LevelObserverCamera, CreateViewTargetTransitionParams(CameraBlendTime));
+                PlayerController->SetViewTarget(LevelOverviewCamera, CreateViewTargetTransitionParams(CameraBlendTime));
             }
         }
     }
 
     for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
     {
-        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetPlayerController());
-        PlayerController->BeginGameOver(PlayerName);
+        auto* PlayerController = Cast<AAnarchistManPlayerController>(PlayerState->GetOwningController());
+        if (PlayerController)
+        {
+            PlayerController->BeginGameOver(PlayerName);
+        }
     }
 }
 
-inline FViewTargetTransitionParams AAnarchistManGameMode::CreateViewTargetTransitionParams(float BlendTime)
+void AAnarchistManGameMode::SpawnAIControllers()
 {
-    FViewTargetTransitionParams TransitionParams;
-    TransitionParams.BlendTime = BlendTime;
-    TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
-    TransitionParams.BlendExp = 0;
-    TransitionParams.bLockOutgoing = true;
-    return TransitionParams;
+    if (AIControllerClass == nullptr)
+    {
+        return;
+    }
+
+    TArray<APlayerStart*> StartPoints;
+    for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+    {
+        StartPoints.Add(*It);
+    }
+
+    auto* GameInstance = GetWorld()->GetGameInstanceChecked<UAMGameInstance>();
+    for (int32 AIPlayerStartId = GameInstance->ConnectedPlayersNum; AIPlayerStartId < StartPoints.Num(); AIPlayerStartId++)
+    {
+        auto* AIController = GetWorld()->SpawnActor<AAIController>(AIControllerClass, FVector::ZeroVector, FRotator::ZeroRotator);
+        if (AIController)
+        {
+            // Set the player's ID.
+            check(AIController->PlayerState);
+            AIController->PlayerState->SetPlayerId(GameSession->GetNextPlayerID());
+
+            SetControllerName(AIController);
+            SetControllerColor(AIController);
+
+            RestartPlayer(AIController);
+        }
+    }
+}
+
+void AAnarchistManGameMode::SetControllerName(AController* Controller)
+{
+    auto* PlayerState = Controller->GetPlayerState<AAnarchistManPlayerState>();
+    check(PlayerState);
+    int32 PlayerId = PlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
+    FString PlayerName;
+
+    switch (PlayerId)
+    {
+    case 0:
+        PlayerName = "Red";
+        break;
+    case 1:
+        PlayerName = "Green";
+        break;
+    case 2:
+        PlayerName = "Blue";
+        break;
+    case 3:
+        PlayerName = "Yellow";
+        break;
+    default:
+        PlayerName = "Default";
+    }
+
+    PlayerState->SetPlayerName(PlayerName);
+}
+
+void AAnarchistManGameMode::SetControllerColor(AController* Controller)
+{
+    auto* PlayerState = Controller->GetPlayerState<AAnarchistManPlayerState>();
+    check(PlayerState);
+    int32 PlayerId = PlayerState->GetPlayerId() % Utils::MAX_PLAYERS;
+    FColor PlayerColor = Utils::PlayerColors[PlayerId];
+    PlayerState->SetPlayerColor(PlayerColor);
+}
+
+AActor* AAnarchistManGameMode::GetNextViewTarget() const
+{
+    // If we fail to find another player to view, return level overview camera.
+    AActor* NextViewTarget = GetLevelOverviewCamera();
+    for (const TObjectPtr<APlayerState>& PlayerState : GameState->PlayerArray)
+    {
+        auto* AMPlayerState = Cast<AAnarchistManPlayerState>(PlayerState);
+        if (!AMPlayerState->IsDead())
+        {
+            auto* PlayerCharacter = AMPlayerState->GetPawn<APlayerCharacter>();
+            if (PlayerCharacter)
+            {
+                NextViewTarget = AMPlayerState->GetPawn<APlayerCharacter>();;
+                break;
+            }
+        }
+    }
+    return NextViewTarget;
+}
+
+bool AAnarchistManGameMode::ShouldSpawnAtStartSpot(AController* Player)
+{
+    return false;
+}
+
+ACameraActor* AAnarchistManGameMode::GetLevelOverviewCamera() const
+{
+    ACameraActor* CameraActor = nullptr;
+    TArray<AActor*> CameraActors;
+    UGameplayStatics::GetAllActorsOfClassWithTag(this, ACameraActor::StaticClass(), FName("Overview"), CameraActors);
+    if (!CameraActors.IsEmpty())
+    {
+        CameraActor = Cast<ACameraActor>(CameraActors[0]);
+    }
+    return CameraActor;
 }

@@ -7,15 +7,17 @@
 
 #include "AnarchistManGameMode.generated.h"
 
+class AAIController;
 class AAnarchistManPlayerController;
 class AAnarchistManPlayerState;
+class APlayerCharacter;
 class UUserWidget;
 
 /**
  * 
  */
 UCLASS()
-class ANARCHISTMAN_API AAnarchistManGameMode : public AGameModeBase
+class AAnarchistManGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
@@ -33,8 +35,6 @@ protected:
 
     void Destroyed() override;
 
-	AActor* ChoosePlayerStart_Implementation(AController* Player) override;
-
 	void PlayerDeath(AController* Controller);
 
     UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
@@ -43,7 +43,7 @@ protected:
     APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 
     UFUNCTION()
-    void OnPlayerCharacterDeath(APlayerController* PlayerController);
+    void OnPlayerCharacterDeath(AController* PlayerController);
 
 private:
 
@@ -57,15 +57,32 @@ private:
 
 	void BeginGameOver(FString PlayerName);
 
-    inline FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime);
+    void SpawnAIControllers();
+
+    void SetControllerName(AController* Controller);
+
+    void SetControllerColor(AController* Controller);
+
+    AActor* GetNextViewTarget() const;
+
+    virtual bool ShouldSpawnAtStartSpot(AController* Player) override;
+
+    ACameraActor* GetLevelOverviewCamera() const;
+
+    FORCEINLINE FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime) const
+    {
+        FViewTargetTransitionParams TransitionParams;
+        TransitionParams.BlendTime = BlendTime;
+        TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
+        TransitionParams.BlendExp = 0;
+        TransitionParams.bLockOutgoing = true;
+        return TransitionParams;
+    }
 
 protected:
 
-    UPROPERTY()
+    UPROPERTY(BlueprintReadOnly)
     FName CurrentMatchState;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Properties")
-	TSubclassOf<AActor> LevelObserverCameraClass;
 
     UPROPERTY(EditDefaultsOnly, Category = "Properties")
     float RoundCountdownTime;
@@ -74,13 +91,15 @@ protected:
     float CameraBlendTime;
 
     UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    float DrawTimeThreshold;
+    float RoundDrawTimeThreshold;
 
     UPROPERTY(EditDefaultsOnly, Category = "Properties")
     bool bResetLevelOnBeginPreGame;
 
-private:
+    UPROPERTY(EditDefaultsOnly, Category = "Classes")
+    TSubclassOf<AAIController> AIControllerClass;
 
-    uint32 RecentDeaths;
+    UPROPERTY(BlueprintReadOnly)
+    int32 RecentDeaths;
 	
 };

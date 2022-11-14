@@ -2,11 +2,10 @@
 
 #include "PowerUp.h"
 
-#include <AnarchistManPlayerState.h>
+#include <Components/BoxComponent.h>
+
 #include <PlayerCharacter.h>
 #include <Utils.h>
-
-#include <Components/BoxComponent.h>
 
 APowerUp::APowerUp()
 {
@@ -21,7 +20,7 @@ APowerUp::APowerUp()
     MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
     MeshComponent->SetupAttachment(RootComponent);
 
-    ZOffset = 25.f;
+    ZDistance = 25.f;
 }
 
 void APowerUp::BeginPlay()
@@ -51,10 +50,13 @@ void APowerUp::Tick(float DeltaSeconds)
 
 void APowerUp::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    auto* PlayerCharacter = Cast<APlayerCharacter>(OtherActor);
-    if (PlayerCharacter)
+    if (HasAuthority())
     {
-        Consume(PlayerCharacter);
+        auto* PlayerCharacter = Cast<APlayerCharacter>(OtherActor);
+        if (PlayerCharacter)
+        {
+            Consume(PlayerCharacter);
+        }
     }
 }
 
@@ -71,7 +73,7 @@ void APowerUp::BlowUp_Implementation()
 void APowerUp::TimelineProgress(float Delta)
 {
     FVector EndLocation = StartLocation;
-    EndLocation.Z += ZOffset;
+    EndLocation.Z += ZDistance;
 
     FVector Location = FMath::Lerp(StartLocation, EndLocation, Delta);
     SetActorLocation(Location);

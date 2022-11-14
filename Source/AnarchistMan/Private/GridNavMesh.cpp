@@ -2,246 +2,49 @@
 
 #include "GridNavMesh.h"
 
-#include <Bomb.h>
-#include <BreakableBlock.h>
-#include <PlayerCharacter.h>
-#include <UtilsFunctionLibrary.h>
-
 #include <AIModule/Public/GraphAStar.h>
+#include <GameFramework/CharacterMovementComponent.h>
 #include <Kismet/GameplayStatics.h>
 
-// TODO move this to another file
-FGridQueryFilter::FGridQueryFilter(const AGridNavMesh* NavMesh) : GridNavMesh(NavMesh)
+#include <GridQueryFilter.h>
+#include <PlayerCharacter.h>
+
+static float GetSpeedMultiplier(const AActor* Owner)
 {
-}
-
-void FGridQueryFilter::Reset()
-{}
-
-void FGridQueryFilter::SetAreaCost(uint8 AreaType, float Cost)
-{}
-
-void FGridQueryFilter::SetFixedAreaEnteringCost(uint8 AreaType, float Cost)
-{}
-
-void FGridQueryFilter::SetExcludedArea(uint8 AreaType)
-{}
-
-void FGridQueryFilter::SetAllAreaCosts(const float* CostArray, const int32 Count)
-{}
-
-void FGridQueryFilter::GetAllAreaCosts(float* CostArray, float* FixedCostArray, const int32 Count) const
-{}
-
-void FGridQueryFilter::SetBacktrackingEnabled(const bool bBacktracking)
-{}
-
-bool FGridQueryFilter::IsBacktrackingEnabled() const
-{
-    return false;
-}
-
-float FGridQueryFilter::GetHeuristicScale() const
-{
-    return 1.0f;
-}
-
-bool FGridQueryFilter::IsEqual(const INavigationQueryFilterInterface* Other) const
-{
-    return false;
-}
-
-void FGridQueryFilter::SetIncludeFlags(uint16 Flags)
-{}
-
-uint16 FGridQueryFilter::GetIncludeFlags() const
-{
-    return 0;
-}
-
-void FGridQueryFilter::SetExcludeFlags(uint16 Flags)
-{}
-
-uint16 FGridQueryFilter::GetExcludeFlags() const
-{
-    return 0;
-}
-
-FVector FGridQueryFilter::GetAdjustedEndLocation(const FVector& EndLocation) const
-{
-    FVector Location = Utils::RoundToUnitCenter(EndLocation);
-    // TODO
-    Location.Z = Utils::Unit;
-    return Location;
-}
-
-INavigationQueryFilterInterface* FGridQueryFilter::CreateCopy() const
-{
-    return new FGridQueryFilter(GridNavMesh);
-}
-
-float FGridQueryFilter::GetHeuristicCost(const FSearchNode& StartNode, const FSearchNode& EndNode) const
-{
-    FNodeRef StartNodeRef = StartNode.NodeRef;
-    FNodeRef EndNodeRef = EndNode.NodeRef;
-
-    FIntVector StartNodeLocation;
-    StartNodeLocation.X = (StartNodeRef % GridNavMesh->Columns);
-    StartNodeLocation.Y = (StartNodeRef / GridNavMesh->Columns);
-
-    FIntVector EndNodeLocation;
-    EndNodeLocation.X = (EndNodeRef % GridNavMesh->Columns);
-    EndNodeLocation.Y = (EndNodeRef / GridNavMesh->Columns);
-
-    FIntVector Delta = EndNodeLocation - StartNodeLocation;
-
-    return FMath::Abs(Delta.X) + FMath::Abs(Delta.Y);
-}
-
-float FGridQueryFilter::GetTraversalCost(const FSearchNode& StartNode, const FSearchNode& EndNode) const
-{
-    // If EndNodeRef is a valid index we return the tile cost, 
-    // if not we return 1, because the traversal cost need to be > 0 or the FGraphAStar will stop the execution
-    // look at GraphAStar.h line 244: ensure(NewTraversalCost > 0);
-
-    FNodeRef EndNodeRef = EndNode.NodeRef;
-
-    // We use approximately estimated values.
-
-    // Derived from max default character speed of 600 units/sec.
-    float TileDefaultMinPassingTime = 0.167f;
-    // Worst case of time to pass 100 units (can be worse, but it rarely happens).
-    float TileDefaultMaxPassingTime = 0.35f;
-    // Average case of time to pass 100 units (derived from observations).
-    float TileDefaultAveragePassingTime = 0.25f;
-    // Default bomb lifetime + 300 units.
-    float TileBlockPassingTime = 3.f + TileDefaultAveragePassingTime * 3;
-    // Default bomb lifetime + 500 units.
-    float TileBombPassingTime = 3.f + TileDefaultAveragePassingTime * 5;
-
-    float TimeBeforeEndNodeMin = 0;
-    // + 2 so character's hit box does not overlap explosion tile.
-    // First one to be in the center of EndNode, second one to be in the center of EndNode + 1 node.
-    float TimeAfterEndNodeMax = TileDefaultMaxPassingTime * 2;
-
-    int64 TraversalCost = StartNode.TraversalCost;
-
-    TimeBeforeEndNodeMin += TraversalCost / ETileNavCost::BOMB * TileBombPassingTime;
-    TimeAfterEndNodeMax += TraversalCost / ETileNavCost::BOMB * TileBombPassingTime;
-    TraversalCost %= ETileNavCost::BOMB;
-
-    TimeBeforeEndNodeMin += TraversalCost / ETileNavCost::BLOCK * TileBlockPassingTime;
-    TimeAfterEndNodeMax += TraversalCost / ETileNavCost::BLOCK * TileBlockPassingTime;
-    TraversalCost %= ETileNavCost::BLOCK;
-
-    TimeBeforeEndNodeMin += TraversalCost / ETileNavCost::DEFAULT * TileDefaultMinPassingTime;
-    TimeAfterEndNodeMax += TraversalCost / ETileNavCost::DEFAULT * TileDefaultAveragePassingTime;
-    TraversalCost %= ETileNavCost::DEFAULT;
-
-    FVector Location = GridNavMesh->NodeRefToLocation(EndNodeRef);
-
-    float TileTimeout = GridNavMesh->GetTileTimeout(Location);
-
-    int64 PathCost = ETileNavCost::DEFAULT;
-
-    if (TileTimeout != AGridNavMesh::TIMEOUT_DEFAULT)
-    {
-        // Check if tile explodes while we run through it.
-        if (GridNavMesh->IsTileDangerous(Location, TimeBeforeEndNodeMin, TimeAfterEndNodeMax))
-        {
-            PathCost = ETileNavCost::BOMB;
-            Location.Z = 300.f;
-            DrawDebugSphere(GridNavMesh->GetWorld(), Location, 25.f, 8, FColor::Black, false, 0.05f);
-        }
-    }
-    else
-    {
-        // TODO GetTileCost variant with NodeRef parameter
-        PathCost = GridNavMesh->GetTileCost(Location);
-    }
-
-    return PathCost;
-}
-
-bool FGridQueryFilter::IsTraversalAllowed(const FNodeRef NodeA, const FNodeRef NodeB) const
-{
-    // Here you can make a more complex operation like use a line trace to see if there is some obstacles (like an enemy).
-
-    //TArray<FOverlapResult> OutOverlaps{};
-    //FVector Location = GridNavMesh->NodeRefToLocation(NodeB);
-    //FCollisionObjectQueryParams QueryParams;
-    //QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-    //FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(Utils::Unit / 8, Utils::Unit / 8, Utils::Unit));
-    //GridNavMesh->GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
-    //
-    //for (const FOverlapResult& Overlap : OutOverlaps)
-    //{
-    //    AActor* Actor = Overlap.GetActor();
-    //    if (IsValid(Actor) && Cast<ABomb>(Actor))
-    //    {
-    //        return false;
-    //    }
-    //}
-
-    bool bTraversalAllowed = true;
-
-    FVector Location = GridNavMesh->NodeRefToLocation(NodeB);
-    if (GridNavMesh->GetTileCost(Location) >= ETileNavCost::BOMB)
-    {
-        bTraversalAllowed = false;
-
-        Location.Z = 300.f;
-        DrawDebugSphere(GridNavMesh->GetWorld(), Location, 25.f, 8, FColor::White, false, 0.05f);
-    }
-
-    return bTraversalAllowed;
-}
-
-bool FGridQueryFilter::WantsPartialSolution() const
-{
-    return true;
+    const auto* Controller = Cast<const AController>(Owner);
+    const auto* PlayerCharacter = Controller->GetPawn<const APlayerCharacter>();
+    return PlayerCharacter->GetCharacterMovement()->GetMaxSpeed() / PlayerCharacter->GetDefaultMaxWalkSpeed();
 }
 
 AGridNavMesh::AGridNavMesh()
 {
     PrimaryActorTick.bCanEverTick = true;
 
-    // TODO should be editable
-    Rows = 20;
-    Columns = 20;
+    bDrawDebugShapes = false;
+    bShowDebugText = false;
+
+    Rows = 5;
+    Columns = 5;
 
     FindPathImplementation = FindPath;
     TestPathImplementation = TestPath;
-
-    //DefaultQueryFilter->SetFilterType<FGridQueryFilter>();
-    //auto QueryFilter = (FGridQueryFilter*) DefaultQueryFilter->GetImplementation();
-    //QueryFilter->SetNavMesh(this);
-
-    FGridQueryFilter QueryFilter(this);
-    DefaultQueryFilter->SetFilterImplementation(&QueryFilter);
-
-    int64 Cost = 1;
-    TileCosts.Init(Cost, Columns * Rows);
-
-    float Timeout = TIMEOUT_DEFAULT;
-    TileTimeouts.Init(Timeout, Columns * Rows);
 }
 
 void AGridNavMesh::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
-    if (bDrawDebug)
+    if (bDrawDebugShapes)
     {
         for (FNodeRef NodeRef = 0; NodeRef < TileCosts.Num(); NodeRef++)
         {
             FVector Location = NodeRefToLocation(NodeRef);
-            Location.Z += 100.f;
+            Location.Z += Utils::Unit;
 
             FString Text;
             FColor Color;
 
-            // TODO set universal variable
+            // Worst case of time to pass 100 units * 2 = 0.7
             if (TileTimeouts[NodeRef] > 0.7f)
             {
                 Color = FColor::Yellow;
@@ -250,7 +53,7 @@ void AGridNavMesh::Tick(float DeltaSeconds)
             {
                 Color = FColor::Red;
             }
-            else if (TileTimeouts[NodeRef] != TIMEOUT_DEFAULT)
+            else if (TileTimeouts[NodeRef] != TIMEOUT_UNSET)
             {
                 Color = FColor::White;
             }
@@ -281,15 +84,12 @@ void AGridNavMesh::BeginPlay()
 {
     Super::BeginPlay();
 
-    for (uint64 Index = 0; Index < TileCosts.Num(); Index++)
-    {
-        TileCosts[Index] = 1;
-    }
+    FGridQueryFilter QueryFilter(this, 1.f, bDrawDebugShapes);
+    DefaultQueryFilter->SetFilterImplementation(&QueryFilter);
 
-    for (uint64 Index = 0; Index < TileTimeouts.Num(); Index++)
-    {
-        TileTimeouts[Index] = TIMEOUT_DEFAULT;
-    }
+    TileCosts.Init(ETileNavCost::DEFAULT, Columns * Rows);
+
+    TileTimeouts.Init(TIMEOUT_UNSET, Columns * Rows);
 }
 
 FPathFindingResult AGridNavMesh::FindPath(const FNavAgentProperties& AgentProperties, const FPathFindingQuery& Query)
@@ -309,7 +109,7 @@ FPathFindingResult AGridNavMesh::FindPath(const FNavAgentProperties& AgentProper
     FPathFindingResult Result(ENavigationQueryResult::Error);
 
     FNavigationPath* NavPath = Query.PathInstanceToFill.Get();
-    FGridNavMeshPath* NavMeshPath = NavPath ? NavPath->CastPath<FGridNavMeshPath>() : nullptr;
+    FNavMeshPath* NavMeshPath = NavPath ? NavPath->CastPath<FNavMeshPath>() : nullptr;
 
     if (NavMeshPath)
     {
@@ -318,27 +118,33 @@ FPathFindingResult AGridNavMesh::FindPath(const FNavAgentProperties& AgentProper
     }
     else
     {
-        Result.Path = Self->CreatePathInstance<FGridNavMeshPath>(Query);
+        Result.Path = Self->CreatePathInstance<FNavMeshPath>(Query);
         NavPath = Result.Path.Get();
-        NavMeshPath = NavPath ? NavPath->CastPath<FGridNavMeshPath>() : nullptr;
+        NavMeshPath = NavPath ? NavPath->CastPath<FNavMeshPath>() : nullptr;
     }
 
-    float DebugCost = 0.f;
+    float TraversalCost = 0.f;
+
+    FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
+    StartLocation.Z = NavMesh->GetActorLocation().Z;
+
+    FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
+    EndLocation.Z = NavMesh->GetActorLocation().Z;
+
+    FNodeRef StartNodeRef = NavMesh->LocationToNodeRef(StartLocation);
+    FNodeRef EndNodeRef = NavMesh->LocationToNodeRef(EndLocation);
+
+    if (NavMesh->bShowDebugText)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Yellow, FString::Printf(TEXT("FindPath from %d to %d"), StartNodeRef, EndNodeRef));
+    }
 
     const FNavigationQueryFilter* NavFilter = Query.QueryFilter.Get();
-    if (NavMeshPath && NavFilter)
+    if (NavMeshPath && NavFilter && NavFilter->GetImplementation())
     {
         NavMeshPath->ApplyFlags(Query.NavDataFlags);
 
-        FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
-        // TODO
-        StartLocation.Z = Utils::Unit;
-
-        FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
-        // TODO
-        EndLocation.Z = Utils::Unit;
-
-        if ((StartLocation - EndLocation).IsNearlyZero(25.f) == true)
+        if ((StartLocation - EndLocation).IsNearlyZero(10.f) == true)
         {
             Result.Path->GetPathPoints().Reset();
             Result.Path->GetPathPoints().Add(FNavPathPoint(EndLocation));
@@ -349,76 +155,84 @@ FPathFindingResult AGridNavMesh::FindPath(const FNavAgentProperties& AgentProper
             // Reset path points.
             Result.Path->GetPathPoints().Reset();
 
-            FNodeRef StartNodeRef = NavMesh->LocationToNodeRef(StartLocation);
-            FNodeRef EndNodeRef = NavMesh->LocationToNodeRef(EndLocation);
-
-            FGraphAStar<AGridNavMesh> Pathfinder(*NavMesh);
-            // TODO check if we need to check if it's set / check if it can be set from BP
+            FGridGraphAStar Pathfinder(*NavMesh);
             const auto* GridQueryFilter = static_cast<const FGridQueryFilter*>(NavFilter->GetImplementation());
-
-            TArray<FNodeRef> PathNodes;
+            GridQueryFilter->SetSpeedMultiplier(GetSpeedMultiplier(Cast<const AActor>(Query.Owner)));
+            FResultPathNodes PathNodes;
             EGraphAStarResult AStarResult = Pathfinder.FindPath(StartNodeRef, EndNodeRef, *GridQueryFilter, PathNodes);
-
-            GEngine->AddOnScreenDebugMessage(-3, 0.1f, FColor::Green, FString::Printf(TEXT("FindPath result: %d"), AStarResult));
 
             switch (AStarResult)
             {
             case GoalUnreachable:
-            {
                 Result.Result = ENavigationQueryResult::Invalid;
                 break;
-            }
             case InfiniteLoop:
                 Result.Result = ENavigationQueryResult::Error;
                 break;
             case SearchFail:
-                Result.Result = ENavigationQueryResult::Invalid;
+                Result.Result = ENavigationQueryResult::Fail;
                 break;
             case SearchSuccess:
+            {
                 Result.Result = ENavigationQueryResult::Success;
 
-                // We don't include the starting point in PathNodes, because it can be a bomb and we don't need to check if it's dangerous.
-                FVector StartTileLocation = Utils::RoundToUnitCenter(Query.StartLocation);
-                Result.Path->GetPathPoints().Add(FNavPathPoint(StartTileLocation));
+                // Add the starting tile manually, because we can also leave it, so we don't need to check if it's dangerous.
+                Result.Path->GetPathPoints().Add(FNavPathPoint(StartLocation));
 
-                for (const FNodeRef& PathNode : PathNodes)
+                FVector PrevNodeLocation = StartLocation;
+
+                for (const FNodeDescription& PathNode : PathNodes)
                 {
-                    FVector PathNodeLocation = NavMesh->NodeRefToLocation(PathNode);
-
-                    // If the path is blocked by a breakable block, end the path in front of the block and report path as partial.
-                    if (NavMesh->GetTileCost(PathNodeLocation) == ETileNavCost::BLOCK)
-                    {
-                        Result.Path->SetIsPartial(true);
-                        break;
-                    }
-
                     // If the path is blocked by a bomb or something more dangerous, mark this path as invalid.
-                    if (NavMesh->GetTileCost(PathNodeLocation) >= ETileNavCost::BOMB)
+                    if (PathNode.TraversalCost >= ETileNavCost::BOMB)
                     {
                         Result.Result = ENavigationQueryResult::Invalid;
                         break;
                     }
+                    // If the path is blocked by a breakable block, end the path in front of the block and report path as partial.
+                    else if (PathNode.TraversalCost >= ETileNavCost::BLOCK)
+                    {
+                        Result.Path->SetIsPartial(true);
 
+                        // A path should have at least two points to be valid.
+                        if (Result.Path->GetPathPoints().Num() < 2)
+                        {
+                            Result.Path->GetPathPoints().Add(FNavPathPoint(PrevNodeLocation));
+                        }
+
+                        break;
+                    }
+
+                    FVector PathNodeLocation = NavMesh->NodeRefToLocation(PathNode.NodeRef);
                     Result.Path->GetPathPoints().Add(FNavPathPoint(PathNodeLocation));
 
-                    DebugCost += NavMesh->GetTileCost(PathNodeLocation);
+                    TraversalCost = PathNode.TraversalCost;
+                    PrevNodeLocation = PathNodeLocation;
+                }
+
+                if (NavMesh->bDrawDebugShapes)
+                {
+                    Self->DrawDebugPath(Result.Path.Get(), FColor::Red, nullptr, false, 0.1f);
                 }
 
                 // Mark the path as ready.
                 Result.Path->MarkReady();
                 break;
             }
+            }
         }
     }
 
-    GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Green, FString::Printf(TEXT("FindPath cost: %f"), DebugCost));
+    if (NavMesh->bShowDebugText)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Green, FString::Printf(TEXT("FindPath cost: %f"), TraversalCost));
+    }
 
     return Result;
 }
 
 bool AGridNavMesh::TestPath(const FNavAgentProperties& AgentProperties, const FPathFindingQuery& Query, int32* NumVisitedNodes)
 {
-    // TODO code should match FindPath
     SCOPE_CYCLE_COUNTER(STAT_Grid_Navigation_Pathfinding);
     CSV_SCOPED_TIMING_STAT_EXCLUSIVE(Pathfinding);
 
@@ -433,44 +247,37 @@ bool AGridNavMesh::TestPath(const FNavAgentProperties& AgentProperties, const FP
 
     bool bPathExists = true;
 
+    FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
+    FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
+
+    FNodeRef StartNodeRef = NavMesh->LocationToNodeRef(StartLocation);
+    FNodeRef EndNodeRef = NavMesh->LocationToNodeRef(EndLocation);
+
     const FNavigationQueryFilter* NavFilter = Query.QueryFilter.Get();
-    if (NavFilter)
+    if (NavFilter && NavFilter->GetImplementation())
     {
         const FVector AdjustedEndLocation = NavFilter->GetAdjustedEndLocation(Query.EndLocation);
         if ((Query.StartLocation - AdjustedEndLocation).IsNearlyZero() == false)
         {
-            FVector StartLocation = Utils::RoundToUnitCenter(Query.StartLocation);
-            FVector EndLocation = Utils::RoundToUnitCenter(Query.EndLocation);
-
-            FNodeRef StartIdx = NavMesh->LocationToNodeRef(StartLocation);
-            FNodeRef EndIdx = NavMesh->LocationToNodeRef(EndLocation);
-            FGraphAStar<AGridNavMesh> Pathfinder(*NavMesh);
-            // TODO check if we need to check if it's set / check if it can be set from BP
+            FGridGraphAStar Pathfinder(*NavMesh);
             const auto* GridQueryFilter = static_cast<const FGridQueryFilter*>(NavFilter->GetImplementation());
-            TArray<FNodeRef> PathNodes;
-            EGraphAStarResult AStarResult = Pathfinder.FindPath(StartIdx, EndIdx, *GridQueryFilter, PathNodes);
+            GridQueryFilter->SetSpeedMultiplier(GetSpeedMultiplier(Cast<const AActor>(Query.Owner)));
+            FResultPathNodes PathNodes;
+            EGraphAStarResult AStarResult = Pathfinder.FindPath(StartNodeRef, EndNodeRef, *GridQueryFilter, PathNodes);
 
             switch (AStarResult)
             {
             case SearchSuccess:
             {
-                for (const FNodeRef& PathNode : PathNodes)
+                for (const FNodeDescription& PathNode : PathNodes)
                 {
                     if (NumVisitedNodes)
                     {
-                        NumVisitedNodes[PathNode]++;
+                        NumVisitedNodes[PathNode.NodeRef]++;
                     }
 
-                    // TODO check if correct
-                    // If the path is blocked by a breakable block, end the path in front of it and report path as partial.
-                    FVector PathNodeLocation = NavMesh->NodeRefToLocation(PathNode);
-                    if (NavMesh->GetTileCost(PathNodeLocation) == ETileNavCost::BLOCK)
-                    {
-                        bPathExists = false;
-                        break;
-                    }
-
-                    if (NavMesh->GetTileCost(PathNodeLocation) == ETileNavCost::BOMB)
+                    // If the path is blocked by a breakable block, bomb or something more dangerous, mark this path as non-existent.
+                    if (PathNode.TraversalCost >= ETileNavCost::BLOCK)
                     {
                         bPathExists = false;
                         break;
@@ -487,7 +294,10 @@ bool AGridNavMesh::TestPath(const FNavAgentProperties& AgentProperties, const FP
         }
     }
 
-    GEngine->AddOnScreenDebugMessage(-2, 0.5f, FColor::Green, FString::Printf(TEXT("TestPath exists: %d"), bPathExists));
+    if (NavMesh->bShowDebugText)
+    {
+        GEngine->AddOnScreenDebugMessage(-2, 0.5f, FColor::Green, FString::Printf(TEXT("TestPath exists: %d"), bPathExists));
+    }
 
     return bPathExists;
 }
@@ -517,8 +327,8 @@ void AGridNavMesh::BatchProjectPoints(TArray<FNavigationProjectionWork>& Workloa
 
 bool AGridNavMesh::IsValidRef(FNodeRef NodeRef) const
 {
-    uint32_t X = NodeRef % Columns;
-    uint32_t Y = NodeRef / Columns;
+    int32 X = NodeRef % Columns;
+    int32 Y = NodeRef / Columns;
     return X != 0 && Y != 0 && (Y % 2 == 1 || X % 2 == 1) && NodeRef >= 0 && NodeRef < TileCosts.Num();
 }
 
@@ -584,7 +394,7 @@ float AGridNavMesh::GetTileTimeout(FVector Location) const
     }
     else
     {
-        return TIMEOUT_DEFAULT;
+        return TIMEOUT_UNSET;
     }
 }
 
@@ -603,7 +413,7 @@ bool AGridNavMesh::IsTileDangerous(FVector Location, float TimeBeforeTileMin, fl
 
     float TileTimeout = GetTileTimeout(Location);
 
-    if (TileTimeout != TIMEOUT_DEFAULT)
+    if (TileTimeout != TIMEOUT_UNSET)
     {
         // Check if tile explodes while we run through it.
         if (TimeBeforeTileMin <= TileTimeout && TileTimeout <= TimeAfterTileMax)
@@ -615,19 +425,28 @@ bool AGridNavMesh::IsTileDangerous(FVector Location, float TimeBeforeTileMin, fl
     return bIsDangerous;
 }
 
-bool AGridNavMesh::IsPathSafe(FVector CharacterLocation, const TArray<FVector>& PathPoints)
+bool AGridNavMesh::IsPathSafe(AController* Controller, const TArray<FVector>& PathPoints) const
 {
-    bool bIsSafe = true;
+    FVector CharacterLocation = Controller->GetPawn()->GetActorLocation();
 
-    GEngine->AddOnScreenDebugMessage(-5, 0.1f, FColor::Yellow, FString::Printf(TEXT("Is Path Safe: %f, %f"), CharacterLocation.X, CharacterLocation.Y));
+    if (bShowDebugText)
+    {
+        GEngine->AddOnScreenDebugMessage(-5, 0.1f, FColor::Yellow, FString::Printf(TEXT("Is Path Safe: %f, %f"), CharacterLocation.X, CharacterLocation.Y));
+    }
 
     if (PathPoints.IsEmpty())
     {
-        GEngine->AddOnScreenDebugMessage(-15, 0.1f, FColor::Red, FString::Printf(TEXT("Path is empty: %f, %f"), CharacterLocation.X, CharacterLocation.Y));
-        return bIsSafe;
+        if (bShowDebugText)
+        {
+            GEngine->AddOnScreenDebugMessage(-15, 0.1f, FColor::Red, FString::Printf(TEXT("Path is empty: %f, %f"), CharacterLocation.X, CharacterLocation.Y));
+        }
+
+        return true;
     }
 
-    FGridQueryFilter QueryFilter(this);
+    bool bIsSafe = true;
+
+    FGridQueryFilter QueryFilter(this, GetSpeedMultiplier(Controller), bDrawDebugShapes);
     FNodeRef CharacterNodeRef = LocationToNodeRef(CharacterLocation);
     int64 TraversalCost = 0;
     bool bFoundCurrentTile = false;
@@ -643,7 +462,11 @@ bool AGridNavMesh::IsPathSafe(FVector CharacterLocation, const TArray<FVector>& 
         if (CharacterNodeRef == StartNodeRef)
         {
             bFoundCurrentTile = true;
-            GEngine->AddOnScreenDebugMessage(-10, 0.1f, FColor::Yellow, FString::Printf(TEXT("Found current tile: %f, %f"), StartLocation.X, StartLocation.Y));
+
+            if (bShowDebugText)
+            {
+                GEngine->AddOnScreenDebugMessage(-10, 0.1f, FColor::Yellow, FString::Printf(TEXT("Found current tile: %f, %f"), StartLocation.X, StartLocation.Y));
+            }
         }
 
         if (!bFoundCurrentTile)
@@ -651,7 +474,10 @@ bool AGridNavMesh::IsPathSafe(FVector CharacterLocation, const TArray<FVector>& 
             continue;
         }
 
-        GEngine->AddOnScreenDebugMessage(-100 - Index, 0.1f, FColor::Green, FString::Printf(TEXT("Found safe path tile: %f, %f"), StartLocation.X, StartLocation.Y));
+        if (bShowDebugText)
+        {
+            GEngine->AddOnScreenDebugMessage(-100 - Index, 0.1f, FColor::Green, FString::Printf(TEXT("Found safe path tile: %f, %f"), StartLocation.X, StartLocation.Y));
+        }
 
         if (QueryFilter.IsTraversalAllowed(StartNodeRef, EndNodeRef))
         {
@@ -678,7 +504,7 @@ bool AGridNavMesh::IsPathSafe(FVector CharacterLocation, const TArray<FVector>& 
     return bIsSafe;
 }
 
-FVector AGridNavMesh::FindNearestCharacter(AActor* CurrentCharacter)
+FVector AGridNavMesh::FindNearestCharacter(AController* Controller) const
 {
     TSet<FNodeRef> CharacterNodeRefs;
 
@@ -686,7 +512,7 @@ FVector AGridNavMesh::FindNearestCharacter(AActor* CurrentCharacter)
     UGameplayStatics::GetAllActorsOfClass(this, APlayerCharacter::StaticClass(), Actors);
     for (AActor* Actor : Actors)
     {
-        if (CurrentCharacter != Actor)
+        if (Controller->GetPawn() != Actor)
         {
             FVector ActorLocation = Utils::RoundToUnitCenter(Actor->GetActorLocation());
             FNodeRef ActorNodeRef = LocationToNodeRef(ActorLocation);
@@ -694,7 +520,7 @@ FVector AGridNavMesh::FindNearestCharacter(AActor* CurrentCharacter)
         }
     }
 
-    FNodeDescription StartNode{ LocationToNodeRef(CurrentCharacter->GetActorLocation()), 0 };
+    FNodeDescription StartNode{ LocationToNodeRef(Controller->GetPawn()->GetActorLocation()), 0 };
 
     FNodeRef CharacterNodeRef = StartNode.NodeRef;
     float BestCost = TNumericLimits<float>::Max();
@@ -711,15 +537,14 @@ FVector AGridNavMesh::FindNearestCharacter(AActor* CurrentCharacter)
         return Continue;
     };
 
-    BFS(StartNode, CheckNearest, ETileNavCost::BLOCK);
+    BFS(Controller, StartNode, CheckNearest, ETileNavCost::BLOCK);
 
     FVector CharacterLocation = NodeRefToLocation(CharacterNodeRef);
-    // TODO get level height from somewhere
-    CharacterLocation.Z = Utils::Unit;
+    CharacterLocation.Z = GetActorLocation().Z;
     return CharacterLocation;
 }
 
-bool AGridNavMesh::IsCharacterNearby(AActor* CurrentCharacter, int64 RadiusTiles)
+bool AGridNavMesh::IsCharacterNearby(AController* Controller, int64 RadiusTiles) const
 {
     TSet<FNodeRef> CharacterNodeRefs;
 
@@ -727,7 +552,7 @@ bool AGridNavMesh::IsCharacterNearby(AActor* CurrentCharacter, int64 RadiusTiles
     UGameplayStatics::GetAllActorsOfClass(this, APlayerCharacter::StaticClass(), Actors);
     for (AActor* Actor : Actors)
     {
-        if (CurrentCharacter != Actor)
+        if (Controller->GetPawn() != Actor)
         {
             FVector ActorLocation = Utils::RoundToUnitCenter(Actor->GetActorLocation());
             FNodeRef ActorNodeRef = LocationToNodeRef(ActorLocation);
@@ -735,7 +560,7 @@ bool AGridNavMesh::IsCharacterNearby(AActor* CurrentCharacter, int64 RadiusTiles
         }
     }
 
-    FNodeDescription StartNode{ LocationToNodeRef(CurrentCharacter->GetActorLocation()), 0 };
+    FNodeDescription StartNode{ LocationToNodeRef(Controller->GetPawn()->GetActorLocation()), 0 };
 
     bool IsNearby = false;
 
@@ -759,14 +584,20 @@ bool AGridNavMesh::IsCharacterNearby(AActor* CurrentCharacter, int64 RadiusTiles
         return Continue;
     };
 
-    BFS(StartNode, CheckNearest, ETileNavCost::DEFAULT);
+    BFS(Controller, StartNode, CheckNearest, ETileNavCost::DEFAULT);
 
     return IsNearby;
 }
 
-void AGridNavMesh::BFS(const FNodeDescription& StartNode, std::function<bool(const FNodeDescription& CurrentNode)> NodeRefFunc, ETileNavCost::Type MaxTileNavCostAllowed)
+void AGridNavMesh::BFS(AController* Controller, const FNodeDescription& StartNode, std::function<bool(const FNodeDescription& CurrentNode)> NodeRefFunc, ETileNavCost::Type MaxTileNavCostAllowed) const
 {
-    FGridQueryFilter QueryFilter(this);
+    if (!IsValidRef(StartNode.NodeRef))
+    {
+        UE_LOG(LogGame, Error, TEXT("Node Ref is not valid, Rows/Columns properties are probably incorrect!"));
+        return;
+    }
+
+    FGridQueryFilter QueryFilter(this, GetSpeedMultiplier(Controller), bDrawDebugShapes);
 
     TArray<int64> VisitedCost;
     VisitedCost.Init(TNumericLimits<int64>::Max(), Columns * Rows);
@@ -819,17 +650,15 @@ FVector AGridNavMesh::NodeRefToLocation(FNodeRef NodeRef) const
     FVector NodeLocation;
     NodeLocation.X = (NodeRef % Columns) * Utils::Unit + Utils::Unit / 2;
     NodeLocation.Y = (NodeRef / Columns) * Utils::Unit + Utils::Unit / 2;
-    // TODO get parent Z
-    NodeLocation.Z = Utils::Unit;
-
+    NodeLocation.Z = GetActorLocation().Z;
     return NodeLocation;
 }
 
 FNodeRef AGridNavMesh::LocationToNodeRef(FVector Location) const
 {
     FIntVector LocationIndex;
-    LocationIndex.X = Location.X / 100.f;
-    LocationIndex.Y = Location.Y / 100.f;
+    LocationIndex.X = Location.X / Utils::Unit;
+    LocationIndex.Y = Location.Y / Utils::Unit;
 
     return LocationIndex.Y * Columns + LocationIndex.X;
 }
@@ -843,16 +672,16 @@ void AGridNavMesh::ResetTiles()
 
     for (FNodeRef NodeRef = 0; NodeRef < TileTimeouts.Num(); NodeRef++)
     {
-        TileTimeouts[NodeRef] = TIMEOUT_DEFAULT;
+        TileTimeouts[NodeRef] = TIMEOUT_UNSET;
     }
 }
 
-void AGridNavMesh::GetReachableTiles(FVector ActorLocation, TArray<int64>& OutCosts, bool bAddMovementDelay)
+void AGridNavMesh::GetReachableTiles(AController* Controller, TArray<float>& OutCosts, bool bAddMovementDelay) const
 {
-    OutCosts.Init(TNumericLimits<int64>::Max(), Columns * Rows);
+    OutCosts.Init(TNumericLimits<float>::Max(), Columns * Rows);
 
-    int64 StartCost = bAddMovementDelay ? 1 : 0;
-    FNodeDescription StartNode{ LocationToNodeRef(ActorLocation), StartCost };
+    int64 StartCost = bAddMovementDelay ? ETileNavCost::DEFAULT : 0;
+    FNodeDescription StartNode{ LocationToNodeRef(Controller->GetPawn()->GetActorLocation()), StartCost };
 
     auto SetOutCost = [&OutCosts](const FNodeDescription& CurrentNode) -> bool
     {
@@ -860,5 +689,5 @@ void AGridNavMesh::GetReachableTiles(FVector ActorLocation, TArray<int64>& OutCo
         return true;
     };
 
-    BFS(StartNode, SetOutCost, ETileNavCost::DEFAULT);
+    BFS(Controller, StartNode, SetOutCost, ETileNavCost::DEFAULT);
 }

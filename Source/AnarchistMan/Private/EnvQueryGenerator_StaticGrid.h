@@ -3,11 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/ObjectMacros.h"
-#include "Templates/SubclassOf.h"
 #include "DataProviders/AIDataProvider.h"
-#include "EnvironmentQuery/EnvQueryContext.h"
 #include "EnvironmentQuery/Generators/EnvQueryGenerator_ProjectedPoints.h"
+
 #include "EnvQueryGenerator_StaticGrid.generated.h"
 
 /**
@@ -21,6 +19,14 @@ class UEnvQueryGenerator_StaticGrid : public UEnvQueryGenerator_ProjectedPoints
 public:
     UEnvQueryGenerator_StaticGrid(const FObjectInitializer& ObjectInitializer);
 
+private:
+
+    virtual void GenerateItems(FEnvQueryInstance& QueryInstance) const override;
+
+    virtual FText GetDescriptionTitle() const override;
+    virtual FText GetDescriptionDetails() const override;
+
+protected:
 
     /** half of square's extent, like a radius */
     UPROPERTY(EditDefaultsOnly, Category = Generator, meta = (DisplayName = "GridHalfSize"))
@@ -33,10 +39,5 @@ public:
     /** context */
     UPROPERTY(EditDefaultsOnly, Category = Generator)
     FVector GenerateAroundLocation;
-
-    virtual void GenerateItems(FEnvQueryInstance& QueryInstance) const override;
-
-    virtual FText GetDescriptionTitle() const override;
-    virtual FText GetDescriptionDetails() const override;
 	
 };

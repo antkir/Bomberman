@@ -3,13 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GraphAStar.h"
+#include "Navigation/NavLocalGridData.h"
+#include "NavMesh/NavMeshPath.h"
 
-#include "NavigationData.h"
-
-#include <GraphAStar.h>
-#include <Navigation/NavLocalGridData.h>
-#include <NavMesh/NavMeshPath.h>
-#include <Utils.h>
+#include "Utils.h"
 
 #include "GridNavMesh.generated.h"
 
@@ -18,8 +16,14 @@ DECLARE_CYCLE_STAT(TEXT("Grid A* Pathfinding"), STAT_Grid_Navigation_Pathfinding
 typedef FNavLocalGridData::FNodeRef FNodeRef;
 typedef FGraphAStarDefaultNode<AGridNavMesh> FSearchNode;
 
+struct FNodeDescription
+{
+    FNodeRef NodeRef;
+    int64 TraversalCost;
+};
+
 /**
- * 
+ * AGridNavMesh class contains methods for finding or testing a navigation path using A* algorithm.
  */
 UCLASS()
 class AGridNavMesh : public ANavigationData
@@ -28,49 +32,52 @@ class AGridNavMesh : public ANavigationData
 
 public:
 
-    static constexpr float TIMEOUT_DEFAULT = TNumericLimits<float>::Lowest();
+    static constexpr float TIMEOUT_UNSET = TNumericLimits<float>::Lowest();
+
+    // Type used for identification of nodes in the graph.
+    typedef FNodeRef FNodeRef;
+
+public:
 
     AGridNavMesh();
 
+public:
+
     virtual void Tick(float DeltaSeconds) override;
+
+protected:
 
     void BeginPlay() override;
 
+public:
+
     /**
-     * the function is static for a reason, (wiki copy-paste->)
-     * comments in the code explain it's for performance reasons: Epic are concerned
-     * that if a lot of agents call the pathfinder in the same frame the virtual call overhead will accumulate and take too long,
-     * so instead the function is declared static and stored in the FindPathImplementation function pointer.
-     * Which means you need to manually set the function pointer in your new navigation class constructor
-     * (or in some other function like we do here in SetHexGrid().
+     * Epic are concerned that if a lot of agents call the pathfinder in the same frame,
+     * the virtual call overhead will accumulate and take too long,
+     * so instead the function is declared static and stored in a function pointer,
+     * which means we need to manually set the function pointer in our new navigation class constructor.
      */
     static FPathFindingResult FindPath(const FNavAgentProperties& AgentProperties, const FPathFindingQuery& Query);
 
     static bool TestPath(const FNavAgentProperties& AgentProperties, const FPathFindingQuery& Query, int32* NumVisitedNodes);
 
-    FORCEINLINE const FNavigationQueryFilter& GetRightFilterRef(FSharedConstNavQueryFilter Filter) const
-    {
-        return *(Filter.IsValid() ? Filter.Get() : GetDefaultQueryFilter().Get());
-    }
-
-    /** Project batch of points using shared search extent and filter */
+    // Project batch of points using shared search extent and filter.
     virtual void BatchProjectPoints(TArray<FNavigationProjectionWork>& Workload, const FVector& Extent, FSharedConstNavQueryFilter Filter = NULL, const UObject* Querier = NULL) const override;
 
-    //////////////////////////////////////////////////////////////////////////
-
-    /*  Type used as identification of nodes in the graph. */
-    typedef FNodeRef FNodeRef;
-
-    /* Returns whether given node identification is correct */
     bool IsValidRef(FNodeRef NodeRef) const;
 
-    /* Returns neighbor ref */
     FNodeRef GetNeighbour(const FSearchNode& SearchNodeRef, const int32 NeighbourIndex) const;
 
-    /* Returns number of neighbors that the graph node identified with NodeRef has */
     int32 GetNeighbourCount(FNodeRef NodeRef) const;
 
-    //////////////////////////////////////////////////////////////////////////
+    FVector NodeRefToLocation(FNodeRef NodeRef) const;
+
+    FNodeRef LocationToNodeRef(FVector Location) const;
+
+    void ResetTiles();
+
+    void GetReachableTiles(AController* Controller, TArray<float>& OutCosts, bool bAddMovementDelay = false) const;
+
     UFUNCTION(BlueprintCallable)
     int64 GetTileCost(FVector Location) const;
 
@@ -87,119 +94,153 @@ public:
     bool IsTileDangerous(FVector Location, float TimeBeforeTileMin, float TimeAfterTileMax) const;
 
     UFUNCTION(BlueprintCallable)
-    bool IsPathSafe(FVector CharacterLocation, const TArray<FVector>& PathPoints);
+    bool IsPathSafe(AController* Controller, const TArray<FVector>& PathPoints) const;
 
     UFUNCTION(BlueprintCallable)
-    FVector FindNearestCharacter(AActor* CurrentCharacter);
+    FVector FindNearestCharacter(AController* Controller) const;
 
     UFUNCTION(BlueprintCallable)
-    bool IsCharacterNearby(AActor* CurrentCharacter, int64 RadiusTiles);
+    bool IsCharacterNearby(AController* Controller, int64 RadiusTiles) const;
 
 private:
 
-    struct FNodeDescription
+    FORCEINLINE const FNavigationQueryFilter& GetRightFilterRef(FSharedConstNavQueryFilter Filter) const
     {
-        FNodeRef NodeRef;
-        int64 TraversalCost;
-    };
+        return *(Filter.IsValid() ? Filter.Get() : GetDefaultQueryFilter().Get());
+    }
 
-    void BFS(const FNodeDescription& StartNode, std::function<bool(const FNodeDescription& CurrentNode)> NodeRefFunc, ETileNavCost::Type MaxTileNavCostAllowed);
+    void BFS(AController* Controller, const FNodeDescription& StartNode, std::function<bool(const FNodeDescription& CurrentNode)> NodeRefFunc, ETileNavCost::Type MaxTileNavCostAllowed) const;
 
 public:
 
-    FVector NodeRefToLocation(FNodeRef NodeRef) const;
-    FNodeRef LocationToNodeRef(FVector Location) const;
-
-    void ResetTiles();
-
-    void GetReachableTiles(FVector ActorLocation, TArray<int64>& OutCosts, bool bAddMovementDelay = false);
-
-    ///////////////////////////////////////////////////////////////////////////
-
-    /** Array of tile costs that compose the grid. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "NavMesh")
-    TArray<int64> TileCosts;
-
-    /** Array of tile costs that compose the grid. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "NavMesh")
-    TArray<float> TileTimeouts;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NavMesh")
-    float PathPointZOffset;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NavMesh")
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Properties", meta = (ClampMin = "0"))
     int32 Rows;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NavMesh")
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Properties", meta = (ClampMin = "0"))
     int32 Columns;
 
-    /**
-     * Toggle our debug drawing.
-     */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GraphAStarExample|PathFollowingComponent")
-    bool bDrawDebug;
+protected:
+
+    /** Array of tile costs that compose the grid. */
+    UPROPERTY(VisibleAnywhere, Category = "Properties")
+    TArray<int64> TileCosts;
+
+    /** Array of tile timeouts that compose the grid. */
+    UPROPERTY(VisibleAnywhere, Category = "Properties")
+    TArray<float> TileTimeouts;
+
+    /** Toggle debug drawing. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Properties")
+    bool bDrawDebugShapes;
+
+    /** Toggle debug text. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Properties")
+    bool bShowDebugText;
 };
 
-struct FGridNavMeshPath : public FNavMeshPath
+struct FGridGraphAStar : FGraphAStar<AGridNavMesh, FGraphAStarDefaultPolicy>
 {
-    /*FORCEINLINE*/ virtual float GetCostFromIndex(int32 PathPointIndex) const override
+    FGridGraphAStar(const AGridNavMesh& InGraph) : FGraphAStar(InGraph)
     {
-        return CurrentPathCost;
     }
 
-    /*FORCEINLINE*/ virtual float GetLengthFromPosition(FVector SegmentStart, uint32 NextPathPointIndex) const override
+    template<typename TQueryFilter, typename TResultPathInfo = TArray<FGraphNodeRef> >
+    EGraphAStarResult FindPath(const FSearchNode& StartNode, const FSearchNode& EndNode, const TQueryFilter& Filter, TResultPathInfo& OutPath)
     {
-        // Excluding the starting point.
-        return PathPoints.Num() - 1;
-    }
+        UE_GRAPH_ASTAR_LOG(Display, TEXT(""));
+        UE_GRAPH_ASTAR_LOG(Display, TEXT("Starting FindPath request..."));
 
-    float CurrentPathCost = 0;
+        if (!(Graph.IsValidRef(StartNode.NodeRef) && Graph.IsValidRef(EndNode.NodeRef)))
+        {
+            return SearchFail;
+        }
+
+        if (StartNode.NodeRef == EndNode.NodeRef)
+        {
+            return SearchSuccess;
+        }
+
+        if (FGraphAStarDefaultPolicy::bReuseNodePoolInSubsequentSearches)
+        {
+            NodePool.ReinitNodes();
+        }
+        else
+        {
+            NodePool.Reset();
+        }
+        OpenList.Reset();
+
+        // kick off the search with the first node
+        FSearchNode& StartPoolNode = NodePool.Add(StartNode);
+        StartPoolNode.TraversalCost = 0;
+        StartPoolNode.TotalCost = GetHeuristicCost(Filter, StartNode, EndNode) * Filter.GetHeuristicScale();
+
+        OpenList.Push(StartPoolNode);
+
+        int32 BestNodeIndex = StartPoolNode.SearchNodeIndex;
+        float BestNodeCost = StartPoolNode.TotalCost;
+
+        // Fixed StartPoolNode usage. Store these values now, so they are valid after NodePool resizing in ProcessSingleNode.
+        const int32 StartNodeSearchIndex = StartPoolNode.SearchNodeIndex;
+        const int32 StartNodeRef = StartPoolNode.NodeRef;
+
+        EGraphAStarResult Result = EGraphAStarResult::SearchSuccess;
+        const bool bIsBound = true;
+
+        bool bProcessNodes = true;
+        while (OpenList.Num() > 0 && bProcessNodes)
+        {
+            bProcessNodes = ProcessSingleNode(EndNode, bIsBound, Filter, BestNodeIndex, BestNodeCost);
+        }
+
+        // check if we've reached the goal
+        if (BestNodeCost != 0.f)
+        {
+            Result = EGraphAStarResult::GoalUnreachable;
+        }
+
+        // no point to waste perf creating the path if querier doesn't want it
+        if (Result == EGraphAStarResult::SearchSuccess || Filter.WantsPartialSolution())
+        {
+            // store the path. Note that it will be reversed!
+            int32 SearchNodeIndex = BestNodeIndex;
+            int32 PathLength = ShouldIncludeStartNodeInPath(Filter) && BestNodeIndex != StartNodeSearchIndex ? 1 : 0;
+            do
+            {
+                PathLength++;
+                SearchNodeIndex = NodePool[SearchNodeIndex].ParentNodeIndex;
+            } while (NodePool.IsValidIndex(SearchNodeIndex) && NodePool[SearchNodeIndex].NodeRef != StartNodeRef && ensure(PathLength < FGraphAStarDefaultPolicy::FatalPathLength));
+
+            if (PathLength >= FGraphAStarDefaultPolicy::FatalPathLength)
+            {
+                Result = EGraphAStarResult::InfiniteLoop;
+            }
+
+            OutPath.Reset(PathLength);
+            OutPath.AddZeroed(PathLength);
+
+            // store the path
+            UE_GRAPH_ASTAR_LOG(Display, TEXT("Storing path result (length=%i)..."), PathLength);
+            SearchNodeIndex = BestNodeIndex;
+            int32 ResultNodeIndex = PathLength - 1;
+            do
+            {
+                UE_GRAPH_ASTAR_LOG(Display, TEXT("  NodeRef %i"), NodePool[SearchNodeIndex].NodeRef);
+                SetPathInfo(OutPath, ResultNodeIndex--, NodePool[SearchNodeIndex]);
+                SearchNodeIndex = NodePool[SearchNodeIndex].ParentNodeIndex;
+            } while (ResultNodeIndex >= 0);
+        }
+
+        return Result;
+    }
 };
 
-/**
- * TQueryFilter (FindPath's parameter) filter class is what decides which graph edges can be used and at what cost.
- * Use FRecastQueryFilter as a reference.
- */
-struct FGridQueryFilter : public INavigationQueryFilterInterface
+struct FResultPathNodes : TArray<FNodeDescription>
 {
-public:
-    FGridQueryFilter(const AGridNavMesh* NavMesh);
-
-    virtual void Reset() override;
-
-    virtual void SetAreaCost(uint8 AreaType, float Cost) override;
-    virtual void SetFixedAreaEnteringCost(uint8 AreaType, float Cost) override;
-    virtual void SetExcludedArea(uint8 AreaType) override;
-    virtual void SetAllAreaCosts(const float* CostArray, const int32 Count) override;
-    virtual void GetAllAreaCosts(float* CostArray, float* FixedCostArray, const int32 Count) const override;
-    virtual void SetBacktrackingEnabled(const bool bBacktracking) override;
-    virtual bool IsBacktrackingEnabled() const override;
-    virtual float GetHeuristicScale() const override;
-    virtual bool IsEqual(const INavigationQueryFilterInterface* Other) const override;
-    virtual void SetIncludeFlags(uint16 Flags) override;
-    virtual uint16 GetIncludeFlags() const override;
-    virtual void SetExcludeFlags(uint16 Flags) override;
-    virtual uint16 GetExcludeFlags() const override;
-    virtual FVector GetAdjustedEndLocation(const FVector& EndLocation) const override;
-    virtual INavigationQueryFilterInterface* CreateCopy() const override;
-
-    ////////////////////////////////////////////////////////////////////////////////////
-
-    // FGraphAStar functions.
-
-    /* Estimate of cost from StartNode to EndNode from a search node */
-    float GetHeuristicCost(const FSearchNode& StartNode, const FSearchNode& EndNode) const;
-
-    /* Real cost of traveling from StartNode directly to EndNode from a search node */
-    float GetTraversalCost(const FSearchNode& StartNode, const FSearchNode& EndNode) const;
-
-    /* Whether traversing given edge is allowed from a NodeRef */
-    bool IsTraversalAllowed(const FNodeRef NodeA, const FNodeRef NodeB) const;
-
-    /* Whether to accept solutions that do not reach the goal */
-    bool WantsPartialSolution() const;
-
-private:
-
-    const AGridNavMesh* GridNavMesh;
+    FNodeRef SetPathInfo(const int32 Index, const FSearchNode& SearchNode)
+    {
+        GetData()[Index].NodeRef = SearchNode.NodeRef;
+        GetData()[Index].TraversalCost = SearchNode.TraversalCost;
+        return -1;
+    }
 };

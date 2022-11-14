@@ -2,13 +2,11 @@
 
 #include "BreakableBlock.h"
 
-#include <AMNavModifierComponent.h>
+#include <Kismet/GameplayStatics.h>
+
 #include <GridNavMesh.h>
 #include <Utils.h>
 
-#include <Kismet/GameplayStatics.h>
-
-// Sets default values
 ABreakableBlock::ABreakableBlock()
 {
 	bReplicates = true;
@@ -19,31 +17,21 @@ ABreakableBlock::ABreakableBlock()
 	// Create a static mesh component
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 
-	// Set the component's mesh
-	UStaticMesh* CubeMesh = ConstructorHelpers::FObjectFinder<UStaticMesh>(TEXT("StaticMesh'/Engine/EngineMeshes/Cube'")).Object;
-	MeshComponent->SetStaticMesh(CubeMesh);
-
 	// Set as root component
 	RootComponent = MeshComponent;
-}
-
-void ABreakableBlock::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	ABreakableBlock* Bomb = Cast<ABreakableBlock>(OtherActor);
-	if (Bomb)
-	{
-		Destroy();
-	}
 }
 
 void ABreakableBlock::BeginPlay()
 {
     Super::BeginPlay();
 
-    auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
-    FVector Location = GetActorLocation();
-    auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BLOCK);
-    GridNavMesh->SetTileCost(Location, Cost);
+    if (HasAuthority())
+    {
+        auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
+        FVector Location = GetActorLocation();
+        auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BLOCK);
+        GridNavMesh->SetTileCost(Location, Cost);
+    }
 }
 
 bool ABreakableBlock::IsBlockingExplosion_Implementation()
@@ -53,6 +41,8 @@ bool ABreakableBlock::IsBlockingExplosion_Implementation()
 
 void ABreakableBlock::BlowUp_Implementation()
 {
+    check(HasAuthority());
+
     auto* GridNavMesh = Cast<AGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AGridNavMesh::StaticClass()));
     if (GridNavMesh)
     {

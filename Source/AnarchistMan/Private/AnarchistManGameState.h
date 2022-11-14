@@ -29,21 +29,18 @@ public:
 
 	void PlayerDeath();
 
-	uint64 GetPlayersAlive();
+    uint8 GetPlayersAlive() const;
 
-    void SetPlayersAlive(uint64 Num);
+    void SetPlayersAlive(uint8 Num);
 
-    uint8 GetRoundsToWin();
-
-    uint8 GetDefaultBombLimit();
+    uint8 GetRoundsToWin() const;
 
 protected:
 
     UPROPERTY(Replicated, BlueprintReadOnly, EditDefaultsOnly, Category = "Properties")
     uint8 RoundsToWin;
 
-private:
-
-	uint64 PlayersAlive;
+    UPROPERTY(BlueprintReadOnly)
+    uint8 PlayersAlive;
 	
 };
