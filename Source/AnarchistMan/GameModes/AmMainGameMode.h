@@ -97,5 +97,7 @@ protected:
 
     UPROPERTY(BlueprintReadOnly)
     int32 RecentDeaths;
+
+    FTimerHandle BeginPreGameTimerHandle;
 	
 };

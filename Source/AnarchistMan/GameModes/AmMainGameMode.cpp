@@ -66,8 +66,7 @@ void AAmMainGameMode::BeginPlay()
 
     SpawnAIControllers();
 
-    FTimerHandle TimerHandle;
-    GetWorldTimerManager().SetTimer(TimerHandle, this, &AAmMainGameMode::BeginPreGame, 1.f);
+    GetWorldTimerManager().SetTimer(BeginPreGameTimerHandle, this, &AAmMainGameMode::BeginPreGame, 10.f);
 }
 
 void AAmMainGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
@@ -103,6 +102,16 @@ void AAmMainGameMode::PostLogin(APlayerController* NewPlayer)
     }
 
     RestartPlayer(NewPlayer);
+
+    auto* GameInstance = GetWorld()->GetGameInstance<UAmGameInstance>();
+    check(GameInstance);
+    if (GetWorldTimerManager().IsTimerActive(BeginPreGameTimerHandle) && GetNumPlayers() >= GameInstance->ConnectedPlayersNum)
+    {
+        GetWorldTimerManager().ClearTimer(BeginPreGameTimerHandle);
+
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, this, &AAmMainGameMode::BeginPreGame, 1.f);
+    }
 }
 
 void AAmMainGameMode::Destroyed()
@@ -449,7 +458,8 @@ void AAmMainGameMode::SpawnAIControllers()
         StartPoints.Add(*It);
     }
 
-    auto* GameInstance = GetWorld()->GetGameInstanceChecked<UAmGameInstance>();
+    auto* GameInstance = GetWorld()->GetGameInstance<UAmGameInstance>();
+    check(GameInstance);
     for (int32 AIPlayerStartId = GameInstance->ConnectedPlayersNum; AIPlayerStartId < StartPoints.Num(); AIPlayerStartId++)
     {
         auto* AIController = GetWorld()->SpawnActor<AAIController>(AIControllerClass, FVector::ZeroVector, FRotator::ZeroRotator);
