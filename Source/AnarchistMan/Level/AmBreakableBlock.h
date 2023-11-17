@@ -21,7 +21,7 @@ public:
 
 protected:
 
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 
 	virtual bool IsBlockingExplosion_Implementation() override;
 

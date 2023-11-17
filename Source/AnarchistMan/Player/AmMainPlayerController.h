@@ -22,10 +22,8 @@ public:
 
 public:
 
-	void SetupInputComponent() override;
-
 	UFUNCTION(NetMulticast, Reliable)
-	void BeginPreGame(float Countdown);
+	virtual void BeginPreGame(float Countdown);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void BeginGame();
@@ -37,6 +35,8 @@ public:
 	void BeginGameOver(const FString& PlayerName);
 
 protected:
+
+	virtual void SetupInputComponent() override;
 
 	void BeginPlay() override;
 

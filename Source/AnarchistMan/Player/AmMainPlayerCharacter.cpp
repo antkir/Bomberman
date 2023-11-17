@@ -62,12 +62,10 @@ void AAmMainPlayerCharacter::BeginPlay()
 
 	if (BombClass == nullptr)
 	{
-		UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
-		return;
+		UE_LOG(LogGame, Error, TEXT("BombClass property is not set!"));
 	}
 
 	DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
-
 	MaxWalkSpeed = DefaultMaxWalkSpeed;
 }
 
@@ -76,9 +74,7 @@ void AAmMainPlayerCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	FVector CameraLocation = GetActorLocation();
-	CameraLocation.X += CameraLocationOffset.X;
-	CameraLocation.Y += CameraLocationOffset.Y;
-	CameraLocation.Z += CameraLocationOffset.Z;
+	CameraLocation += CameraLocationOffset;
 	CameraComponent->SetWorldLocation(CameraLocation);
 
 	if (!bInputEnabled)
@@ -89,56 +85,30 @@ void AAmMainPlayerCharacter::Tick(float DeltaTime)
 	{
 		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 	}
-
-	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
 void AAmMainPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	if (GetPlayerState())
-	{
-		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-		check(AMPlayerState);
+	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+	check(AMPlayerState);
 
-		int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
-		GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
-
-		for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
-		{
-			GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
-		}
-
-		FColor PlayerColor = AMPlayerState->GetPlayerColor();
-		UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
-		MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
-	}
+	SetPlayerCollision(AMPlayerState);
+	SetPlayerColor(AMPlayerState);
 }
 
 void AAmMainPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (GetPlayerState())
-	{
-		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-		check(AMPlayerState);
+	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+	check(AMPlayerState);
 
-		int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
-		GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
+	SetPlayerCollision(AMPlayerState);
+	SetPlayerColor(AMPlayerState);
 
-		for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
-		{
-			GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
-		}
-
-		FColor PlayerColor = AMPlayerState->GetPlayerColor();
-		UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
-		MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
-
-		AMPlayerState->SetActiveBombsCount(0);
-	}
+	AMPlayerState->SetActiveBombsCount(0);
 }
 
 void AAmMainPlayerCharacter::BlowUp_Implementation()
@@ -160,19 +130,20 @@ void AAmMainPlayerCharacter::BlowUp_Implementation()
 	Destroy();
 }
 
-void AAmMainPlayerCharacter::SetInputEnabled(bool InputEnabled)
+void AAmMainPlayerCharacter::SetInputEnabled(bool bEnabled)
 {
-	bInputEnabled = InputEnabled;
+	bInputEnabled = bEnabled;
 }
 
-void AAmMainPlayerCharacter::SetInvincible(bool Invincible)
+void AAmMainPlayerCharacter::SetInvincible(bool bEnabled)
 {
-	bInvincible = Invincible;
+	bInvincible = bEnabled;
 }
 
 void AAmMainPlayerCharacter::IncreaseMovementSpeed(float Percentage)
 {
 	MaxWalkSpeed += DefaultMaxWalkSpeed * Percentage / 100.f;
+	OnRep_MaxWalkSpeed();
 }
 
 void AAmMainPlayerCharacter::IncrementExplosionRadiusTiles()
@@ -213,27 +184,23 @@ void AAmMainPlayerCharacter::MoveHorizontal(float Value)
 
 void AAmMainPlayerCharacter::OnBombExploded()
 {
+	check(HasAuthority());
+
 	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
 	check(AMPlayerState);
-	if (AMPlayerState)
-	{
-		int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-		AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
-	}
+	int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+	AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
 }
 
 bool AAmMainPlayerCharacter::CanPlaceBomb()
 {
-	bool bCanPlaceBomb = true;
+	check(HasAuthority());
 
-	if (GetPlayerState())
+	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+	check(AMPlayerState);
+	if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
 	{
-		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-		check(AMPlayerState);
-		if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
-		{
-			bCanPlaceBomb = false;
-		}
+		return false;
 	}
 
 	TArray<FOverlapResult> OutOverlaps{};
@@ -249,15 +216,40 @@ bool AAmMainPlayerCharacter::CanPlaceBomb()
 		auto* Bomb = Cast<AAmBomb>(Overlap.GetActor());
 		if (Bomb)
 		{
-			bCanPlaceBomb = false;
+			return false;
 		}
 	}
 
-	return bCanPlaceBomb;
+	return true;
+}
+
+void AAmMainPlayerCharacter::SetPlayerCollision(AAmMainPlayerState* AMPlayerState)
+{
+	int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
+	GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
+
+	for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
+	{
+		GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+	}
+}
+
+void AAmMainPlayerCharacter::SetPlayerColor(AAmMainPlayerState* AMPlayerState)
+{
+	FColor PlayerColor = AMPlayerState->GetPlayerColor();
+	UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+	MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
+}
+
+void AAmMainPlayerCharacter::OnRep_MaxWalkSpeed()
+{
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
 void AAmMainPlayerCharacter::PlaceBomb_Implementation()
 {
+	check(HasAuthority());
+
 	if (!bInputEnabled)
 	{
 		return;
@@ -268,13 +260,10 @@ void AAmMainPlayerCharacter::PlaceBomb_Implementation()
 		return;
 	}
 
-	if (GetPlayerState())
-	{
-		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-		check(AMPlayerState);
-		int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-		AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
-	}
+	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+	check(AMPlayerState);
+	int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+	AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
 
 	FVector Location = GetActorLocation();
 	Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
@@ -283,8 +272,7 @@ void AAmMainPlayerCharacter::PlaceBomb_Implementation()
 	FTransform Transform;
 	Transform.SetLocation(Location);
 	Transform.SetRotation(FQuat::Identity);
-	FActorSpawnParameters SpawnParameters;
-	AAmBomb* Bomb = GetWorld()->SpawnActorAbsolute<AAmBomb>(BombClass, Transform, SpawnParameters);
+	AAmBomb* Bomb = GetWorld()->SpawnActorAbsolute<AAmBomb>(BombClass, Transform);
 	Bomb->SetExplosionRadiusTiles(ExplosionRadiusTiles);
 	Bomb->OnBombExploded.AddDynamic(this, &AAmMainPlayerCharacter::OnBombExploded);
 }

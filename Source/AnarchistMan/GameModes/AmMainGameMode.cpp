@@ -66,7 +66,16 @@ void AAmMainGameMode::BeginPlay()
 
 	SpawnAIControllers();
 
-	GetWorldTimerManager().SetTimer(BeginPreGameTimerHandle, this, &AAmMainGameMode::BeginPreGame, 10.f);
+	auto* GameInstance = GetWorld()->GetGameInstance<UAmGameInstance>();
+	check(GameInstance);
+	if (GameInstance->ConnectedPlayersNum > 1)
+	{
+		GetWorldTimerManager().SetTimer(BeginPreGameTimerHandle, this, &AAmMainGameMode::BeginPreGame, 10.f);
+	}
+	else
+	{
+		BeginPreGame();
+	}
 }
 
 void AAmMainGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
@@ -509,6 +518,7 @@ void AAmMainGameMode::SetControllerColor(AController* Controller)
 {
 	auto* AmPlayerState = Controller->GetPlayerState<AAmMainPlayerState>();
 	check(AmPlayerState);
+
 	int32 PlayerId = AmPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
 	FColor PlayerColor = FAmUtils::PlayerColors[PlayerId];
 	AmPlayerState->SetPlayerColor(PlayerColor);

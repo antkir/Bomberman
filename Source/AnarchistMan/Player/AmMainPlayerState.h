@@ -21,8 +21,6 @@ public:
 
 public:
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 	void SetPlayerDead();
 
 	void SetPlayerAlive();
@@ -44,6 +42,8 @@ public:
 	int32 GetActiveBombsCount() const;
 
 protected:
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead;

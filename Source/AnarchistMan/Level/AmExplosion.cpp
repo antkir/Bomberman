@@ -9,10 +9,6 @@ AAmExplosion::AAmExplosion()
 {
 	bReplicates = true;
 
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickInterval = 0.5f;
-
 	// Create an overlap component
 	OverlapComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("OverlapComponent"));
 

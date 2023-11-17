@@ -89,13 +89,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USkeletalMeshComponent* MeshComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Parameters")
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
 	float ExplosionTimeout;
 
-	UPROPERTY(EditAnywhere, Category = "Parameters")
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
 	float TileExplosionDelay;
 
-	UPROPERTY(EditAnywhere, Category = "Classes")
+	UPROPERTY(EditDefaultsOnly, Category = "Classes")
 	TSubclassOf<AAmExplosion> ExplosionClass;
 
 	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)

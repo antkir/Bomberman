@@ -527,14 +527,14 @@ FVector AAmGridNavMesh::FindNearestCharacter(AController* Controller) const
 
 	auto CheckNearest = [this, &CharacterNodeRefs, &BestCost, &CharacterNodeRef](const FNodeDescription& CurrentNode) -> bool
 	{
-		bool Continue = true;
+		bool bContinue = true;
 		if (CharacterNodeRefs.Contains(CurrentNode.NodeRef) && CurrentNode.TraversalCost < BestCost)
 		{
 			BestCost = CurrentNode.TraversalCost;
 			CharacterNodeRef = CurrentNode.NodeRef;
-			Continue = false;
+			bContinue = false;
 		}
-		return Continue;
+		return bContinue;
 	};
 
 	BFS(Controller, StartNode, CheckNearest, ETileNavCost::BLOCK);
@@ -562,31 +562,31 @@ bool AAmGridNavMesh::IsCharacterNearby(AController* Controller, int64 RadiusTile
 
 	FNodeDescription StartNode{ LocationToNodeRef(Controller->GetPawn()->GetActorLocation()), 0 };
 
-	bool IsNearby = false;
+	bool bIsNearby = false;
 
-	auto CheckNearest = [this, &CharacterNodeRefs, &IsNearby, RadiusTiles](const FNodeDescription& CurrentNode) -> bool
+	auto CheckNearest = [this, &CharacterNodeRefs, &bIsNearby, RadiusTiles](const FNodeDescription& CurrentNode) -> bool
 	{
-		bool Continue = true;
+		bool bContinue = true;
 
 		int64 TilesCount = CurrentNode.TraversalCost / ETileNavCost::DEFAULT;
 		if (TilesCount > RadiusTiles)
 		{
-			Continue = false;
-			return Continue;
+			bContinue = false;
+			return bContinue;
 		}
 
 		if (CharacterNodeRefs.Contains(CurrentNode.NodeRef))
 		{
-			IsNearby = true;
-			Continue = false;
+			bIsNearby = true;
+			bContinue = false;
 		}
 
-		return Continue;
+		return bContinue;
 	};
 
 	BFS(Controller, StartNode, CheckNearest, ETileNavCost::DEFAULT);
 
-	return IsNearby;
+	return bIsNearby;
 }
 
 void AAmGridNavMesh::BFS(AController* Controller, const FNodeDescription& StartNode, std::function<bool(const FNodeDescription& CurrentNode)> NodeRefFunc, ETileNavCost::Type MaxTileNavCostAllowed) const

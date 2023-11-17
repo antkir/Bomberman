@@ -21,12 +21,6 @@ public:
 
 public:
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	void AddPlayerState(APlayerState* PlayerState) override;
-
-	void RemovePlayerState(APlayerState* PlayerState) override;
-
 	void PlayerDeath();
 
 	uint8 GetPlayersAlive() const;
@@ -36,6 +30,12 @@ public:
 	uint8 GetRoundsToWin() const;
 
 protected:
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void AddPlayerState(APlayerState* PlayerState) override;
+
+	virtual void RemovePlayerState(APlayerState* PlayerState) override;
 
 	UPROPERTY(Replicated, BlueprintReadOnly, EditDefaultsOnly, Category = "Properties")
 	uint8 RoundsToWin;

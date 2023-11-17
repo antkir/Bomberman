@@ -51,13 +51,11 @@ public:
 
 	AAmGridNavMesh();
 
-public:
+protected:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-protected:
-
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 
 public:
 
@@ -140,11 +138,11 @@ protected:
 	TArray<float> TileTimeouts;
 
 	/** Toggle debug drawing. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Properties")
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Properties")
 	bool bDrawDebugShapes;
 
 	/** Toggle debug text. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Properties")
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Properties")
 	bool bShowDebugText;
 };
 

@@ -9,9 +9,6 @@
 
 AAmLevelGenerator::AAmLevelGenerator()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
 	Rows = 5;
 	Columns = 5;
 
@@ -136,9 +133,8 @@ void AAmLevelGenerator::SpawnPowerUpsBatch()
 			QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
 			QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
 			QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-			bool IsOverlapping = GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
-
-			if (IsOverlapping)
+			bool bIsOverlapping = GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
+			if (bIsOverlapping)
 			{
 				continue;
 			}

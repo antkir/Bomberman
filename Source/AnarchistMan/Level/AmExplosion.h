@@ -32,6 +32,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UParticleSystemComponent* ParticleSystemComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Parameters")
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
 	float LifeSpan;
 };

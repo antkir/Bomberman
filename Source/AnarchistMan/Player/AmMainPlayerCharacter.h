@@ -11,6 +11,7 @@
 
 class UCameraComponent;
 class AAmBomb;
+class AAmMainPlayerState;
 
 /**
  * @brief Delegate executed when a player dies from a bomb explosion.
@@ -24,24 +25,14 @@ class AAmMainPlayerCharacter : public ACharacter, public IAmExplosiveInterface
 	GENERATED_BODY()
 
 public:
-
 	// Sets default values for this character's properties
 	AAmMainPlayerCharacter();
 
 public:
 
-	// Called to bind functionality to input
-	void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	void SetInputEnabled(bool bEnabled);
 
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	bool IsBlockingExplosion_Implementation() override;
-
-	void BlowUp_Implementation() override;
-
-	void SetInputEnabled(bool InputEnabled);
-
-	void SetInvincible(bool Invincible);
+	void SetInvincible(bool bInvincible);
 
 	UFUNCTION(BlueprintCallable)
 	void IncreaseMovementSpeed(float Percentage);
@@ -58,19 +49,27 @@ public:
 
 protected:
 
-	void BeginPlay() override;
+	// Called to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void Tick(float DeltaTime) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void OnRep_PlayerState() override;
+	virtual bool IsBlockingExplosion_Implementation() override;
 
-	void PossessedBy(AController* NewController) override;
+	virtual void BlowUp_Implementation() override;
+
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void OnRep_PlayerState() override;
+
+	virtual void PossessedBy(AController* NewController) override;
 
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void PlaceBomb();
 
 private:
-
 	void MoveVertical(float Val);
 
 	void MoveHorizontal(float Val);
@@ -80,26 +79,31 @@ private:
 
 	bool CanPlaceBomb();
 
-public:
+	void SetPlayerCollision(AAmMainPlayerState* AMPlayerState);
 
+	void SetPlayerColor(AAmMainPlayerState* AMPlayerState);
+
+	UFUNCTION()
+	void OnRep_MaxWalkSpeed();
+
+public:
 	UPROPERTY(BlueprintAssignable)
 	FPlayerCharacterDeath OnPlayerCharacterDeath;
 
 protected:
-
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UCameraComponent* CameraComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Classes")
+	UPROPERTY(EditDefaultsOnly, Category = "Classes")
 	TSubclassOf<AAmBomb> BombClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Parameters")
 	FVector CameraLocationOffset;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
 	int32 ExplosionRadiusTiles;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
 	int32 ActiveBombsLimit;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -108,9 +112,9 @@ protected:
 	UPROPERTY(Replicated, EditInstanceOnly, BlueprintReadOnly)
 	bool bInvincible;
 
-	UPROPERTY(Transient, Replicated, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_MaxWalkSpeed, BlueprintReadOnly, meta = (ClampMin = "0.0"))
 	float MaxWalkSpeed;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(Transient, BlueprintReadOnly)
 	float DefaultMaxWalkSpeed;
 };

@@ -23,20 +23,20 @@ public:
 
 protected:
 
-	void BeginPlay() override;
+	virtual void BeginPlay() override;
 
-	void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
-	void PostLogin(APlayerController* NewPlayer) override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 
-	void Destroyed() override;
+	virtual void Destroyed() override;
 
 	void PlayerDeath(AController* Controller);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
 	void RestartGame();
 
-	APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
+	virtual APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 
 	UFUNCTION()
 	void OnPlayerCharacterDeath(AController* PlayerController);

@@ -26,18 +26,18 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void Consume(AAmMainPlayerCharacter* PlayerCharacter);
 
-	void Tick(float DeltaSeconds) override;
-
 protected:
 
-	void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-	bool IsBlockingExplosion_Implementation() override;
+	virtual bool IsBlockingExplosion_Implementation() override;
 
-	void BlowUp_Implementation() override;
+	virtual void BlowUp_Implementation() override;
 
 private:
 
@@ -51,10 +51,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Timeline")
+	UPROPERTY(EditDefaultsOnly, Category = "Timeline")
 	UCurveFloat* CurveFloat;
 
-	UPROPERTY(EditAnywhere, Category = "Timeline")
+	UPROPERTY(EditDefaultsOnly, Category = "Timeline")
 	float ZDistance;
 
 private:
