@@ -17,44 +17,44 @@ class AAmMainPlayerState : public APlayerState
 
 public:
 
-    AAmMainPlayerState();
+	AAmMainPlayerState();
 
 public:
 
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    void SetPlayerDead();
+	void SetPlayerDead();
 
-    void SetPlayerAlive();
+	void SetPlayerAlive();
 
-    bool IsDead() const;
+	bool IsDead() const;
 
-    void WinRound();
+	void WinRound();
 
-    uint8 GetRoundWins() const;
+	uint8 GetRoundWins() const;
 
-    void ResetRoundWins();
+	void ResetRoundWins();
 
-    void SetPlayerColor(FColor Color);
+	void SetPlayerColor(FColor Color);
 
-    FColor GetPlayerColor() const;
+	FColor GetPlayerColor() const;
 
-    void SetActiveBombsCount(int32 Count);
+	void SetActiveBombsCount(int32 Count);
 
-    int32 GetActiveBombsCount() const;
+	int32 GetActiveBombsCount() const;
 
 protected:
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsDead;
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
-    uint8 RoundWins;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	uint8 RoundWins;
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
-    FColor PlayerColor;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FColor PlayerColor;
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
-    int32 ActiveBombsCount;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	int32 ActiveBombsCount;
 	
 };

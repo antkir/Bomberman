@@ -21,39 +21,39 @@ AAmBreakableBlock::AAmBreakableBlock()
 
 void AAmBreakableBlock::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    if (HasAuthority())
-    {
-        auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-        if (GridNavMesh)
-        {
-            FVector Location = GetActorLocation();
-            auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BLOCK);
-            GridNavMesh->SetTileCost(Location, Cost);
-        }
-        else
-        {
-            UE_LOG(LogGame, Error, TEXT("AmGridNavMesh instance must be present in this level!"));
-        }
-    }
+	if (HasAuthority())
+	{
+		auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+		if (GridNavMesh)
+		{
+			FVector Location = GetActorLocation();
+			auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BLOCK);
+			GridNavMesh->SetTileCost(Location, Cost);
+		}
+		else
+		{
+			UE_LOG(LogGame, Error, TEXT("AmGridNavMesh instance must be present in this level!"));
+		}
+	}
 }
 
 bool AAmBreakableBlock::IsBlockingExplosion_Implementation()
 {
-    return true;
+	return true;
 }
 
 void AAmBreakableBlock::BlowUp_Implementation()
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-    if (GridNavMesh)
-    {
-        FVector Location = GetActorLocation();
-        GridNavMesh->SetTileCost(Location, 1);
-    }
+	auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+	if (GridNavMesh)
+	{
+		FVector Location = GetActorLocation();
+		GridNavMesh->SetTileCost(Location, 1);
+	}
 
-    Destroy();
+	Destroy();
 }

@@ -5,17 +5,17 @@
 UINTERFACE(Blueprintable)
 class UAmExplosiveInterface : public UInterface
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 };
 
 class IAmExplosiveInterface
-{    
-    GENERATED_BODY()
+{	
+	GENERATED_BODY()
 
 public:
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-    bool IsBlockingExplosion();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool IsBlockingExplosion();
 
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-    void BlowUp();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void BlowUp();
 };

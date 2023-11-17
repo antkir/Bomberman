@@ -20,13 +20,13 @@ class AAmBomb : public AActor, public IAmExplosiveInterface
 {
 	GENERATED_BODY()
 
-    struct FExplosionInfo
-    {
-        int32 LeftTiles;
-        int32 RightTiles;
-        int32 UpTiles;
-        int32 DownTiles;
-    };
+	struct FExplosionInfo
+	{
+		int32 LeftTiles;
+		int32 RightTiles;
+		int32 UpTiles;
+		int32 DownTiles;
+	};
 	
 public:
 
@@ -35,14 +35,14 @@ public:
 
 public:
 
-    void SetExplosionRadiusTiles(int32 Blocks);
+	void SetExplosionRadiusTiles(int32 Blocks);
 
-    virtual void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 
 	// Called when the game starts or when spawned
-    virtual void BeginPlay() override;
+	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
@@ -50,9 +50,9 @@ protected:
 	UFUNCTION()
 	void OnRep_BlockPawns();
 
-    virtual bool IsBlockingExplosion_Implementation() override;
+	virtual bool IsBlockingExplosion_Implementation() override;
 
-    virtual void BlowUp_Implementation() override;
+	virtual void BlowUp_Implementation() override;
 
 private:
 
@@ -60,26 +60,26 @@ private:
 
 	void BeginExplosion();
 
-    void ScheduleTileExplosion(FTransform Transform, float Delay);
+	void ScheduleTileExplosion(FTransform Transform, float Delay);
 
-    static void ExplodeTile(UWorld* World, TSubclassOf<AAmExplosion> ExplosionClass, FTransform Transform);
+	static void ExplodeTile(UWorld* World, TSubclassOf<AAmExplosion> ExplosionClass, FTransform Transform);
 
-    int32 LineTraceExplosion(FVector Start, FVector End);
+	int32 LineTraceExplosion(FVector Start, FVector End);
 
-    void UpdateExplosionConstraints();
+	void UpdateExplosionConstraints();
 
-    void SetExplosionTilesNavTimeout(AAmGridNavMesh* GridNavMesh, float BombExplosionTimeout);
+	void SetExplosionTilesNavTimeout(AAmGridNavMesh* GridNavMesh, float BombExplosionTimeout);
 
-    void SetTileTimeout(AAmGridNavMesh* GridNavMesh, FVector Location, float Timeout);
+	void SetTileTimeout(AAmGridNavMesh* GridNavMesh, FVector Location, float Timeout);
 
-    void ExplosionTimeoutExpired();
+	void ExplosionTimeoutExpired();
 
-    void SetChainExplosionLifeSpan(float Timeout);
+	void SetChainExplosionLifeSpan(float Timeout);
 
 public:
 
-    UPROPERTY(BlueprintAssignable)
-    FBombExploded OnBombExploded;
+	UPROPERTY(BlueprintAssignable)
+	FBombExploded OnBombExploded;
 
 protected:
 
@@ -92,24 +92,24 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float ExplosionTimeout;
 
-    UPROPERTY(EditAnywhere, Category = "Parameters")
-    float TileExplosionDelay;
+	UPROPERTY(EditAnywhere, Category = "Parameters")
+	float TileExplosionDelay;
 
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<AAmExplosion> ExplosionClass;
+	UPROPERTY(EditAnywhere, Category = "Classes")
+	TSubclassOf<AAmExplosion> ExplosionClass;
 
-    UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
-    uint8 BlockPawnsMask;
+	UPROPERTY(ReplicatedUsing = OnRep_BlockPawns)
+	uint8 BlockPawnsMask;
 
-    UPROPERTY(BlueprintReadOnly)
-    int32 ExplosionMaxRadiusTiles;
+	UPROPERTY(BlueprintReadOnly)
+	int32 ExplosionMaxRadiusTiles;
 
-    UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly)
 	bool bExplosionTriggered;
 
 private:
 
-    FExplosionInfo ExplosionInfo;
+	FExplosionInfo ExplosionInfo;
 
-    FTimerHandle TimerHandle_ExplosionTimeoutExpired;
+	FTimerHandle TimerHandle_ExplosionTimeoutExpired;
 };

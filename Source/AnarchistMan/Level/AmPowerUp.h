@@ -16,51 +16,51 @@ class UBoxComponent;
 UCLASS()
 class AAmPowerUp : public AActor, public IAmExplosiveInterface
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    AAmPowerUp();
+	AAmPowerUp();
 
 public:
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void Consume(AAmMainPlayerCharacter* PlayerCharacter);
+	UFUNCTION(BlueprintImplementableEvent)
+	void Consume(AAmMainPlayerCharacter* PlayerCharacter);
 
-    void Tick(float DeltaSeconds) override;
+	void Tick(float DeltaSeconds) override;
 
 protected:
 
-    void BeginPlay() override;
+	void BeginPlay() override;
 
-    UFUNCTION()
-    void HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-    bool IsBlockingExplosion_Implementation() override;
+	bool IsBlockingExplosion_Implementation() override;
 
-    void BlowUp_Implementation() override;
+	void BlowUp_Implementation() override;
 
 private:
 
-    UFUNCTION()
-    void TimelineProgress(float Delta);
+	UFUNCTION()
+	void TimelineProgress(float Delta);
 
 protected:
-    UPROPERTY(VisibleAnywhere, Category = "Components")
-    UBoxComponent* OverlapComponent;
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UBoxComponent* OverlapComponent;
 
-    UPROPERTY(VisibleAnywhere, Category = "Components")
-    UStaticMeshComponent* MeshComponent;
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UStaticMeshComponent* MeshComponent;
 
-    UPROPERTY(EditAnywhere, Category = "Timeline")
-    UCurveFloat* CurveFloat;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+	UCurveFloat* CurveFloat;
 
-    UPROPERTY(EditAnywhere, Category = "Timeline")
-    float ZDistance;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+	float ZDistance;
 
 private:
 
-    FTimeline CurveTimeline;
+	FTimeline CurveTimeline;
 
-    FVector StartLocation;
+	FVector StartLocation;
 
 };

@@ -6,61 +6,61 @@
 
 AAmMainGameState::AAmMainGameState()
 {
-    PlayersAlive = 0;
+	PlayersAlive = 0;
 
-    RoundsToWin = 3;
+	RoundsToWin = 3;
 }
 
 void AAmMainGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(AAmMainGameState, RoundsToWin);
+	DOREPLIFETIME(AAmMainGameState, RoundsToWin);
 }
 
 void AAmMainGameState::AddPlayerState(APlayerState* PlayerState)
 {
-    Super::AddPlayerState(PlayerState);
+	Super::AddPlayerState(PlayerState);
 
-    if (HasAuthority())
-    {
-        PlayersAlive++;
-    }
+	if (HasAuthority())
+	{
+		PlayersAlive++;
+	}
 }
 
 void AAmMainGameState::RemovePlayerState(APlayerState* PlayerState)
 {
-    Super::RemovePlayerState(PlayerState);
+	Super::RemovePlayerState(PlayerState);
 
-    if (HasAuthority())
-    {
-        PlayersAlive--;
-    }
+	if (HasAuthority())
+	{
+		PlayersAlive--;
+	}
 }
 
 void AAmMainGameState::PlayerDeath()
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    if (PlayersAlive > 0)
-    {
-        PlayersAlive--;
-    }
+	if (PlayersAlive > 0)
+	{
+		PlayersAlive--;
+	}
 }
 
 uint8 AAmMainGameState::GetPlayersAlive() const
 {
-    return PlayersAlive;
+	return PlayersAlive;
 }
 
 void AAmMainGameState::SetPlayersAlive(uint8 Num)
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    PlayersAlive = Num;
+	PlayersAlive = Num;
 }
 
 uint8 AAmMainGameState::GetRoundsToWin() const
 {
-    return RoundsToWin;
+	return RoundsToWin;
 }

@@ -18,7 +18,7 @@ AAmBomb::AAmBomb()
 
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-    //PrimaryActorTick.TickInterval = 0.5f;
+	//PrimaryActorTick.TickInterval = 0.5f;
 
 	// Create an overlap component
 	OverlapComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("OverlapComponent"));
@@ -30,20 +30,20 @@ AAmBomb::AAmBomb()
 	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
 
-    TileExplosionDelay = 0.1f;
+	TileExplosionDelay = 0.1f;
 
-    ExplosionTimeout = 3.f;
+	ExplosionTimeout = 3.f;
 
-    ExplosionMaxRadiusTiles = 2;
+	ExplosionMaxRadiusTiles = 2;
 
-    bExplosionTriggered = 0;
+	bExplosionTriggered = 0;
 
-    BlockPawnsMask = 0;
+	BlockPawnsMask = 0;
 }
 
 void AAmBomb::SetExplosionRadiusTiles(int32 Radius)
 {
-    ExplosionMaxRadiusTiles = Radius;
+	ExplosionMaxRadiusTiles = Radius;
 }
 
 void AAmBomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -57,26 +57,26 @@ void AAmBomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 
 void AAmBomb::Tick(float DeltaTime)
 {
-    Super::Tick(DeltaTime);
+	Super::Tick(DeltaTime);
 
-    if (HasAuthority())
-    {
-        auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-        if (GridNavMesh)
-        {
-            UpdateExplosionConstraints();
+	if (HasAuthority())
+	{
+		auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+		if (GridNavMesh)
+		{
+			UpdateExplosionConstraints();
 
-            float ExplosionTimeRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
-            if (ExplosionTimeRemaining == -1.f)
-            {
-                float LifeSpanAfterExplosion = TileExplosionDelay * ExplosionMaxRadiusTiles;
-                float LifeSpanRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_LifeSpanExpired);
-                ExplosionTimeRemaining = -(LifeSpanAfterExplosion - LifeSpanRemaining);
-            }
+			float ExplosionTimeRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
+			if (ExplosionTimeRemaining == -1.f)
+			{
+				float LifeSpanAfterExplosion = TileExplosionDelay * ExplosionMaxRadiusTiles;
+				float LifeSpanRemaining = GetWorldTimerManager().GetTimerRemaining(TimerHandle_LifeSpanExpired);
+				ExplosionTimeRemaining = -(LifeSpanAfterExplosion - LifeSpanRemaining);
+			}
 
-            SetExplosionTilesNavTimeout(GridNavMesh, ExplosionTimeRemaining);
-        }
-    }
+			SetExplosionTilesNavTimeout(GridNavMesh, ExplosionTimeRemaining);
+		}
+	}
 }
 
 // Called when the game starts or when spawned
@@ -84,71 +84,71 @@ void AAmBomb::BeginPlay()
 {
 	Super::BeginPlay();
 
-    if (ExplosionClass == nullptr)
-    {
-        UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
-        return;
-    }
+	if (ExplosionClass == nullptr)
+	{
+		UE_LOG(LogGame, Error, TEXT("ExplosionClass property is not set!"));
+		return;
+	}
 
 	if (HasAuthority())
-    {
-        if (ExplosionTimeout > 0.0f)
-        {
-            GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &AAmBomb::ExplosionTimeoutExpired, ExplosionTimeout);
-        }
-        else
-        {
-            GetWorldTimerManager().ClearTimer(TimerHandle_ExplosionTimeoutExpired);
-        }
+	{
+		if (ExplosionTimeout > 0.0f)
+		{
+			GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &AAmBomb::ExplosionTimeoutExpired, ExplosionTimeout);
+		}
+		else
+		{
+			GetWorldTimerManager().ClearTimer(TimerHandle_ExplosionTimeoutExpired);
+		}
 
-        SetLifeSpan(ExplosionTimeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
+		SetLifeSpan(ExplosionTimeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
 
 		// Do not block players if they are overlapping a bomb
-        {
-            uint8 BlockMask = std::numeric_limits<uint8>::max();
+		{
+			uint8 BlockMask = std::numeric_limits<uint8>::max();
 
-            TArray<FOverlapResult> OutOverlaps{};
-            FVector Location = GetActorLocation();
-            Location.Z = FAmUtils::RoundToUnitCenter(Location.Z);
-            FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 2));
-            FCollisionObjectQueryParams QueryParams;
-            QueryParams.AddObjectTypesToQuery(ECC_Pawn);
-            QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
-            QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
-            QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
-            QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
-            GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
+			TArray<FOverlapResult> OutOverlaps{};
+			FVector Location = GetActorLocation();
+			Location.Z = FAmUtils::RoundToUnitCenter(Location.Z);
+			FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 2));
+			FCollisionObjectQueryParams QueryParams;
+			QueryParams.AddObjectTypesToQuery(ECC_Pawn);
+			QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
+			QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
+			QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
+			QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
+			GetWorld()->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
 
-            for (const FOverlapResult& Overlap : OutOverlaps)
-            {
-                auto* PlayerCharacter = Cast<AAmMainPlayerCharacter>(Overlap.GetActor());
-                if (PlayerCharacter)
-                {
-                    ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
-                    BlockMask ^= FAmUtils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
-                }
-            }
+			for (const FOverlapResult& Overlap : OutOverlaps)
+			{
+				auto* PlayerCharacter = Cast<AAmMainPlayerCharacter>(Overlap.GetActor());
+				if (PlayerCharacter)
+				{
+					ECollisionChannel PlayerCollisionChannel = PlayerCharacter->GetCapsuleComponent()->GetCollisionObjectType();
+					BlockMask ^= FAmUtils::GetPlayerIdFromPawnECC(PlayerCollisionChannel);
+				}
+			}
 
-            BlockPawnsMask = BlockMask;
-            OnRep_BlockPawns();
-        }
+			BlockPawnsMask = BlockMask;
+			OnRep_BlockPawns();
+		}
 
 		OverlapComponent->OnComponentEndOverlap.AddDynamic(this, &AAmBomb::HandleEndOverlap);
 
-        auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-        FVector Location = GetActorLocation();
-        auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BOMB);
-        GridNavMesh->SetTileCost(Location, Cost);
-        GridNavMesh->SetTileTimeout(Location, AAmGridNavMesh::TIMEOUT_UNSET);
+		auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+		FVector Location = GetActorLocation();
+		auto Cost = FMath::Max<int64>(GridNavMesh->GetTileCost(Location), ETileNavCost::BOMB);
+		GridNavMesh->SetTileCost(Location, Cost);
+		GridNavMesh->SetTileTimeout(Location, AAmGridNavMesh::TIMEOUT_UNSET);
 	}
 }
 
 void AAmBomb::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-    if (bExplosionTriggered)
-    {
-        return;
-    }
+	if (bExplosionTriggered)
+	{
+		return;
+	}
 
 	auto* PlayerCharacter = Cast<AAmMainPlayerCharacter>(OtherActor);
 	if (PlayerCharacter)
@@ -176,169 +176,169 @@ void AAmBomb::OnRep_BlockPawns()
 
 bool AAmBomb::IsBlockingExplosion_Implementation()
 {
-    return true;
+	return true;
 }
 
 void AAmBomb::BlowUp_Implementation()
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    if (bExplosionTriggered)
-    {
-        return;
-    }
+	if (bExplosionTriggered)
+	{
+		return;
+	}
 
-    auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-    if (GridNavMesh)
-    {
-        FVector Location = GetActorLocation();
-        GridNavMesh->SetTileCost(Location, 1);
-    }
+	auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+	if (GridNavMesh)
+	{
+		FVector Location = GetActorLocation();
+		GridNavMesh->SetTileCost(Location, 1);
+	}
 
-    BeginExplosion();
+	BeginExplosion();
 
-    OnBombExploded.Broadcast();
+	OnBombExploded.Broadcast();
 
-    // Allow going through the bomb.
-    BlockPawnsMask = 0;
-    OnRep_BlockPawns();
+	// Allow going through the bomb.
+	BlockPawnsMask = 0;
+	OnRep_BlockPawns();
 }
 
 void AAmBomb::LifeSpanExpired()
 {
-    auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
-    if (HasAuthority() && GridNavMesh)
-    {
-        UpdateExplosionConstraints();
+	auto* GridNavMesh = Cast<AAmGridNavMesh>(UGameplayStatics::GetActorOfClass(this, AAmGridNavMesh::StaticClass()));
+	if (HasAuthority() && GridNavMesh)
+	{
+		UpdateExplosionConstraints();
 
-        SetExplosionTilesNavTimeout(GridNavMesh, AAmGridNavMesh::TIMEOUT_UNSET);
-    }
+		SetExplosionTilesNavTimeout(GridNavMesh, AAmGridNavMesh::TIMEOUT_UNSET);
+	}
 
-    Destroy();
+	Destroy();
 }
 
 void AAmBomb::BeginExplosion()
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    bExplosionTriggered = true;
+	bExplosionTriggered = true;
 
-    UpdateExplosionConstraints();
+	UpdateExplosionConstraints();
 
 	{
 		FTransform Transform;
 		Transform.SetLocation(GetActorLocation());
 		Transform.SetRotation(FQuat::Identity);
 
-        ScheduleTileExplosion(Transform, 0.f);
+		ScheduleTileExplosion(Transform, 0.f);
 	}
 
-    // Left
-    for (int32 Index = 1; Index <= ExplosionInfo.LeftTiles; Index++)
-    {
-        FVector Location = GetActorLocation();
-        Location.X = FAmUtils::RoundToUnitCenter(Location.X) - FAmUtils::Unit * Index;
-        Location.Y = FAmUtils::RoundToUnitCenter(Location.Y);
-        FTransform Transform;
-        Transform.SetLocation(Location);
-        Transform.SetRotation(FQuat::Identity);
+	// Left
+	for (int32 Index = 1; Index <= ExplosionInfo.LeftTiles; Index++)
+	{
+		FVector Location = GetActorLocation();
+		Location.X = FAmUtils::RoundToUnitCenter(Location.X) - FAmUtils::Unit * Index;
+		Location.Y = FAmUtils::RoundToUnitCenter(Location.Y);
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(FQuat::Identity);
 
-        ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
-    }
+		ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
+	}
 
-    // Right
-    for (int32 Index = 1; Index <= ExplosionInfo.RightTiles; Index++)
-    {
-        FVector Location = GetActorLocation();
-        Location.X = FAmUtils::RoundToUnitCenter(Location.X) + FAmUtils::Unit * Index;
-        Location.Y = FAmUtils::RoundToUnitCenter(Location.Y);
-        FTransform Transform;
-        Transform.SetLocation(Location);
-        Transform.SetRotation(FQuat::Identity);
+	// Right
+	for (int32 Index = 1; Index <= ExplosionInfo.RightTiles; Index++)
+	{
+		FVector Location = GetActorLocation();
+		Location.X = FAmUtils::RoundToUnitCenter(Location.X) + FAmUtils::Unit * Index;
+		Location.Y = FAmUtils::RoundToUnitCenter(Location.Y);
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(FQuat::Identity);
 
-        ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
-    }
+		ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
+	}
 
-    // Up
-    for (int32 Index = 1; Index <= ExplosionInfo.UpTiles; Index++)
-    {
-        FVector Location = GetActorLocation();
-        Location.X = FAmUtils::RoundToUnitCenter(Location.X);
-        Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) - FAmUtils::Unit * Index;
-        FTransform Transform;
-        Transform.SetLocation(Location);
-        Transform.SetRotation(FQuat::Identity);
+	// Up
+	for (int32 Index = 1; Index <= ExplosionInfo.UpTiles; Index++)
+	{
+		FVector Location = GetActorLocation();
+		Location.X = FAmUtils::RoundToUnitCenter(Location.X);
+		Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) - FAmUtils::Unit * Index;
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(FQuat::Identity);
 
-        ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
-    }
+		ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
+	}
 
-    // Down
-    for (int32 Index = 1; Index <= ExplosionInfo.DownTiles; Index++)
-    {
-        FVector Location = GetActorLocation();
-        Location.X = FAmUtils::RoundToUnitCenter(Location.X);
-        Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) + FAmUtils::Unit * Index;
-        FTransform Transform;
-        Transform.SetLocation(Location);
-        Transform.SetRotation(FQuat::Identity);
+	// Down
+	for (int32 Index = 1; Index <= ExplosionInfo.DownTiles; Index++)
+	{
+		FVector Location = GetActorLocation();
+		Location.X = FAmUtils::RoundToUnitCenter(Location.X);
+		Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) + FAmUtils::Unit * Index;
+		FTransform Transform;
+		Transform.SetLocation(Location);
+		Transform.SetRotation(FQuat::Identity);
 
-        ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
-    }
+		ScheduleTileExplosion(Transform, TileExplosionDelay * Index);
+	}
 }
 
 void AAmBomb::ScheduleTileExplosion(FTransform Transform, float Delay)
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    if (Delay != 0.f)
-    {
-        FTimerHandle TimerHandle;
-        GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
-        {
-            ExplodeTile(World, ExplosionClass, Transform);
-        }, Delay, false);
-    }
-    else
-    {
-        ExplodeTile(GetWorld(), ExplosionClass, Transform);
-    }
+	if (Delay != 0.f)
+	{
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(TimerHandle, [World = GetWorld(), ExplosionClass = ExplosionClass, Transform]()
+		{
+			ExplodeTile(World, ExplosionClass, Transform);
+		}, Delay, false);
+	}
+	else
+	{
+		ExplodeTile(GetWorld(), ExplosionClass, Transform);
+	}
 }
 
 void AAmBomb::ExplodeTile(UWorld* World, TSubclassOf<AAmExplosion> ExplosionClass, FTransform Transform)
 {
-    if (World == nullptr)
-    {
-        return;
-    }
+	if (World == nullptr)
+	{
+		return;
+	}
 
-    check(!World->IsNetMode(NM_Client));
+	check(!World->IsNetMode(NM_Client));
 
-    FVector Location = Transform.GetLocation();
-    Location.Z = FAmUtils::RoundToUnitCenter(Location.Z);
+	FVector Location = Transform.GetLocation();
+	Location.Z = FAmUtils::RoundToUnitCenter(Location.Z);
 
-    FCollisionObjectQueryParams QueryParams;
-    QueryParams.AddObjectTypesToQuery(ECC_Pawn);
-    QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
-    QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
-    QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
-    QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
-    QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	FCollisionObjectQueryParams QueryParams;
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn1);
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn2);
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn3);
+	QueryParams.AddObjectTypesToQuery(ECC_Pawn4);
+	QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
 
-    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 8, FAmUtils::Unit / 8, FAmUtils::Unit));
+	FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 8, FAmUtils::Unit / 8, FAmUtils::Unit));
 
-    TArray<FOverlapResult> OutOverlaps{};
-    World->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
+	TArray<FOverlapResult> OutOverlaps{};
+	World->OverlapMultiByObjectType(OutOverlaps, Location, FQuat::Identity, QueryParams, CollisionShape);
 
-    for (const FOverlapResult& Overlap : OutOverlaps)
-    {
-        AActor* Actor = Overlap.GetActor();
-        if (IsValid(Actor) && Actor->Implements<UAmExplosiveInterface>())
-        {
-            IAmExplosiveInterface::Execute_BlowUp(Actor);
-        }
-    }
+	for (const FOverlapResult& Overlap : OutOverlaps)
+	{
+		AActor* Actor = Overlap.GetActor();
+		if (IsValid(Actor) && Actor->Implements<UAmExplosiveInterface>())
+		{
+			IAmExplosiveInterface::Execute_BlowUp(Actor);
+		}
+	}
 
-    World->SpawnActorAbsolute(ExplosionClass, Transform);
+	World->SpawnActorAbsolute(ExplosionClass, Transform);
 }
 
 int32 AAmBomb::LineTraceExplosion(FVector Start, FVector End)
@@ -359,32 +359,32 @@ int32 AAmBomb::LineTraceExplosion(FVector Start, FVector End)
 				continue;
 			}
 
-            if (Actor->Implements<UAmExplosiveInterface>())
-            {
-                if (Actor->IsA<AAmBomb>())
-                {
-                    FVector Delta = (Actor->GetActorLocation() - Start) / FAmUtils::Unit;
-                    float Timeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
-                    if (Timeout != -1.f)
-                    {
-                        Cast<AAmBomb>(Actor)->SetChainExplosionLifeSpan(Timeout + TileExplosionDelay * Delta.GetAbsMax());
-                    }
-                }
+			if (Actor->Implements<UAmExplosiveInterface>())
+			{
+				if (Actor->IsA<AAmBomb>())
+				{
+					FVector Delta = (Actor->GetActorLocation() - Start) / FAmUtils::Unit;
+					float Timeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
+					if (Timeout != -1.f)
+					{
+						Cast<AAmBomb>(Actor)->SetChainExplosionLifeSpan(Timeout + TileExplosionDelay * Delta.GetAbsMax());
+					}
+				}
 
-                if (IAmExplosiveInterface::Execute_IsBlockingExplosion(Actor))
-                {
-                    float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / FAmUtils::Unit);
-                    ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
+				if (IAmExplosiveInterface::Execute_IsBlockingExplosion(Actor))
+				{
+					float DistanceRounded = FMath::RoundHalfFromZero(HitResult.Distance / FAmUtils::Unit);
+					ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 
-                    break;
-                }
-            }
+					break;
+				}
+			}
 		}
 		else
 		{
-            // Static walls
+			// Static walls
 			float DistanceRounded = FMath::RoundToZero(HitResult.Distance / FAmUtils::Unit);
-            ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
+			ExplosionRadiusTiles = static_cast<int32>(DistanceRounded);
 		}
 	}
 
@@ -393,116 +393,116 @@ int32 AAmBomb::LineTraceExplosion(FVector Start, FVector End)
 
 void AAmBomb::UpdateExplosionConstraints()
 {
-    FVector Start = GetActorLocation();
+	FVector Start = GetActorLocation();
 
-    // Left
-    {
-        FVector End = GetActorLocation();
-        End.X = FAmUtils::RoundToUnitCenter(End.X) - FAmUtils::Unit * ExplosionMaxRadiusTiles;
+	// Left
+	{
+		FVector End = GetActorLocation();
+		End.X = FAmUtils::RoundToUnitCenter(End.X) - FAmUtils::Unit * ExplosionMaxRadiusTiles;
 
-        int32 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.LeftTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
-    }
+		int32 Constraint = LineTraceExplosion(Start, End);
+		ExplosionInfo.LeftTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
+	}
 
-    // Right
-    {
-        FVector End = GetActorLocation();
-        End.X = FAmUtils::RoundToUnitCenter(End.X) + FAmUtils::Unit * ExplosionMaxRadiusTiles;
+	// Right
+	{
+		FVector End = GetActorLocation();
+		End.X = FAmUtils::RoundToUnitCenter(End.X) + FAmUtils::Unit * ExplosionMaxRadiusTiles;
 
-        int32 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.RightTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
-    }
+		int32 Constraint = LineTraceExplosion(Start, End);
+		ExplosionInfo.RightTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
+	}
 
-    // Up
-    {
-        FVector End = GetActorLocation();
-        End.Y = FAmUtils::RoundToUnitCenter(End.Y) - FAmUtils::Unit * ExplosionMaxRadiusTiles;
+	// Up
+	{
+		FVector End = GetActorLocation();
+		End.Y = FAmUtils::RoundToUnitCenter(End.Y) - FAmUtils::Unit * ExplosionMaxRadiusTiles;
 
-        int32 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.UpTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
-    }
+		int32 Constraint = LineTraceExplosion(Start, End);
+		ExplosionInfo.UpTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
+	}
 
-    // Down
-    {
-        FVector End = GetActorLocation();
-        End.Y = FAmUtils::RoundToUnitCenter(End.Y) + FAmUtils::Unit * ExplosionMaxRadiusTiles;
+	// Down
+	{
+		FVector End = GetActorLocation();
+		End.Y = FAmUtils::RoundToUnitCenter(End.Y) + FAmUtils::Unit * ExplosionMaxRadiusTiles;
 
-        int32 Constraint = LineTraceExplosion(Start, End);
-        ExplosionInfo.DownTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
-    }
+		int32 Constraint = LineTraceExplosion(Start, End);
+		ExplosionInfo.DownTiles = std::min(ExplosionMaxRadiusTiles, Constraint);
+	}
 }
 
 void AAmBomb::SetExplosionTilesNavTimeout(AAmGridNavMesh* GridNavMesh, float BombExplosionTimeout)
 {
-    for (int32 Index = 1; Index <= ExplosionMaxRadiusTiles; Index++)
-    {
-        float Timeout = BombExplosionTimeout + TileExplosionDelay * Index;
+	for (int32 Index = 1; Index <= ExplosionMaxRadiusTiles; Index++)
+	{
+		float Timeout = BombExplosionTimeout + TileExplosionDelay * Index;
 
-        if (Index <= ExplosionInfo.LeftTiles)
-        {
-            FVector Location = GetActorLocation();
-            Location.X = FAmUtils::RoundToUnitCenter(Location.X) - FAmUtils::Unit * Index;
-            SetTileTimeout(GridNavMesh, Location, Timeout);
-        }
+		if (Index <= ExplosionInfo.LeftTiles)
+		{
+			FVector Location = GetActorLocation();
+			Location.X = FAmUtils::RoundToUnitCenter(Location.X) - FAmUtils::Unit * Index;
+			SetTileTimeout(GridNavMesh, Location, Timeout);
+		}
 
-        if (Index <= ExplosionInfo.RightTiles)
-        {
-            FVector Location = GetActorLocation();
-            Location.X = FAmUtils::RoundToUnitCenter(Location.X) + FAmUtils::Unit * Index;
-            SetTileTimeout(GridNavMesh, Location, Timeout);
-        }
+		if (Index <= ExplosionInfo.RightTiles)
+		{
+			FVector Location = GetActorLocation();
+			Location.X = FAmUtils::RoundToUnitCenter(Location.X) + FAmUtils::Unit * Index;
+			SetTileTimeout(GridNavMesh, Location, Timeout);
+		}
 
-        if (Index <= ExplosionInfo.UpTiles)
-        {
-            FVector Location = GetActorLocation();
-            Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) - FAmUtils::Unit * Index;
-            SetTileTimeout(GridNavMesh, Location, Timeout);
-        }
+		if (Index <= ExplosionInfo.UpTiles)
+		{
+			FVector Location = GetActorLocation();
+			Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) - FAmUtils::Unit * Index;
+			SetTileTimeout(GridNavMesh, Location, Timeout);
+		}
 
-        if (Index <= ExplosionInfo.DownTiles)
-        {
-            FVector Location = GetActorLocation();
-            Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) + FAmUtils::Unit * Index;
-            SetTileTimeout(GridNavMesh, Location, Timeout);
-        }
-    }
+		if (Index <= ExplosionInfo.DownTiles)
+		{
+			FVector Location = GetActorLocation();
+			Location.Y = FAmUtils::RoundToUnitCenter(Location.Y) + FAmUtils::Unit * Index;
+			SetTileTimeout(GridNavMesh, Location, Timeout);
+		}
+	}
 }
 
 void AAmBomb::SetTileTimeout(AAmGridNavMesh* GridNavMesh, FVector Location, float Timeout)
 {
-    if (Timeout > 0.f)
-    {
-        int64 CurrentCost = GridNavMesh->GetTileCost(Location);
-        float CurrentTileTimeout = GridNavMesh->GetTileTimeout(Location);
-        if (CurrentCost <= ETileNavCost::DEFAULT && (CurrentTileTimeout < 0 || CurrentTileTimeout > Timeout))
-        {
-            GridNavMesh->SetTileTimeout(Location, Timeout);
-        }
-    }
-    else
-    {
-        GridNavMesh->SetTileTimeout(Location, AAmGridNavMesh::TIMEOUT_UNSET);
-    }
+	if (Timeout > 0.f)
+	{
+		int64 CurrentCost = GridNavMesh->GetTileCost(Location);
+		float CurrentTileTimeout = GridNavMesh->GetTileTimeout(Location);
+		if (CurrentCost <= ETileNavCost::DEFAULT && (CurrentTileTimeout < 0 || CurrentTileTimeout > Timeout))
+		{
+			GridNavMesh->SetTileTimeout(Location, Timeout);
+		}
+	}
+	else
+	{
+		GridNavMesh->SetTileTimeout(Location, AAmGridNavMesh::TIMEOUT_UNSET);
+	}
 }
 
 void AAmBomb::ExplosionTimeoutExpired()
 {
-    Execute_BlowUp(this);
+	Execute_BlowUp(this);
 }
 
 void AAmBomb::SetChainExplosionLifeSpan(float Timeout)
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    if (bExplosionTriggered)
-    {
-        return;
-    }
+	if (bExplosionTriggered)
+	{
+		return;
+	}
 
-    float CurrentExplosionTimeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
-    if (CurrentExplosionTimeout != -1.f && CurrentExplosionTimeout > Timeout)
-    {
-        GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &AAmBomb::ExplosionTimeoutExpired, Timeout);
-        GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AActor::LifeSpanExpired, Timeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
-    }
+	float CurrentExplosionTimeout = GetWorldTimerManager().GetTimerRemaining(TimerHandle_ExplosionTimeoutExpired);
+	if (CurrentExplosionTimeout != -1.f && CurrentExplosionTimeout > Timeout)
+	{
+		GetWorldTimerManager().SetTimer(TimerHandle_ExplosionTimeoutExpired, this, &AAmBomb::ExplosionTimeoutExpired, Timeout);
+		GetWorldTimerManager().SetTimer(TimerHandle_LifeSpanExpired, this, &AActor::LifeSpanExpired, Timeout + TileExplosionDelay * ExplosionMaxRadiusTiles);
+	}
 }

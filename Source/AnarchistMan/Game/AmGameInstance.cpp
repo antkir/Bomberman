@@ -4,5 +4,5 @@
 
 UAmGameInstance::UAmGameInstance()
 {
-    ConnectedPlayersNum = 1;
+	ConnectedPlayersNum = 1;
 }

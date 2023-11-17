@@ -21,11 +21,11 @@ public:
 
 protected:
 
-    void BeginPlay() override;
+	void BeginPlay() override;
 
-    virtual bool IsBlockingExplosion_Implementation() override;
+	virtual bool IsBlockingExplosion_Implementation() override;
 
-    virtual void BlowUp_Implementation() override;
+	virtual void BlowUp_Implementation() override;
 
 protected:
 

@@ -29,8 +29,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UBoxComponent* OverlapComponent;
 
-    UPROPERTY(VisibleAnywhere, Category = "Components")
-    UParticleSystemComponent* ParticleSystemComponent;
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UParticleSystemComponent* ParticleSystemComponent;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float LifeSpan;

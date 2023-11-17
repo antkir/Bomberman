@@ -22,49 +22,49 @@ public:
 
 public:
 
-    void SetupInputComponent() override;
+	void SetupInputComponent() override;
 
-    UFUNCTION(NetMulticast, Reliable)
-    void BeginPreGame(float Countdown);
+	UFUNCTION(NetMulticast, Reliable)
+	void BeginPreGame(float Countdown);
 
-    UFUNCTION(NetMulticast, Reliable)
-    void BeginGame();
+	UFUNCTION(NetMulticast, Reliable)
+	void BeginGame();
 
-    UFUNCTION(NetMulticast, Reliable)
-    void BeginRoundOver(const FString& PlayerName);
+	UFUNCTION(NetMulticast, Reliable)
+	void BeginRoundOver(const FString& PlayerName);
 
-    UFUNCTION(NetMulticast, Reliable)
-    void BeginGameOver(const FString& PlayerName);
+	UFUNCTION(NetMulticast, Reliable)
+	void BeginGameOver(const FString& PlayerName);
 
 protected:
 
-    void BeginPlay() override;
+	void BeginPlay() override;
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnBeginPreGame(float Countdown);
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginPreGame(float Countdown);
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnBeginGame();
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginGame();
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnBeginRoundOver(const FString& PlayerName);
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginRoundOver(const FString& PlayerName);
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnBeginRoundDraw();
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginRoundDraw();
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnBeginGameOver(const FString& PlayerName);
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnBeginGameOver(const FString& PlayerName);
 
-    UFUNCTION(BlueprintImplementableEvent)
-    void OnToggleGameMenu();
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnToggleGameMenu();
 
 private:
 
-    void ToggleGameMenu();
+	void ToggleGameMenu();
 
 protected:
 
-    UPROPERTY(BlueprintReadOnly)
-    bool bIsGameMenuOpen;
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsGameMenuOpen;
 
 };

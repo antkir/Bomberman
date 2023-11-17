@@ -22,11 +22,11 @@ AAmMainPlayerCharacter::AAmMainPlayerCharacter()
 	CameraComponent->SetUsingAbsoluteLocation(true);
 	CameraComponent->SetUsingAbsoluteRotation(true);
 
-    bInputEnabled = true;
-    bInvincible = true;
+	bInputEnabled = true;
+	bInvincible = true;
 
-    ExplosionRadiusTiles = 1;
-    ActiveBombsLimit = 1;
+	ExplosionRadiusTiles = 1;
+	ActiveBombsLimit = 1;
 }
 
 // Called to bind functionality to input
@@ -44,31 +44,31 @@ void AAmMainPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 
 void AAmMainPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(AAmMainPlayerCharacter, bInputEnabled);
-    DOREPLIFETIME(AAmMainPlayerCharacter, bInvincible);
-    DOREPLIFETIME(AAmMainPlayerCharacter, MaxWalkSpeed);
+	DOREPLIFETIME(AAmMainPlayerCharacter, bInputEnabled);
+	DOREPLIFETIME(AAmMainPlayerCharacter, bInvincible);
+	DOREPLIFETIME(AAmMainPlayerCharacter, MaxWalkSpeed);
 }
 
 bool AAmMainPlayerCharacter::IsBlockingExplosion_Implementation()
 {
-    return false;
+	return false;
 }
 
 void AAmMainPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-    if (BombClass == nullptr)
-    {
-        UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
-        return;
-    }
+	if (BombClass == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("BombClass property is not set!"));
+		return;
+	}
 
-    DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 
-    MaxWalkSpeed = DefaultMaxWalkSpeed;
+	MaxWalkSpeed = DefaultMaxWalkSpeed;
 }
 
 void AAmMainPlayerCharacter::Tick(float DeltaTime)
@@ -81,210 +81,210 @@ void AAmMainPlayerCharacter::Tick(float DeltaTime)
 	CameraLocation.Z += CameraLocationOffset.Z;
 	CameraComponent->SetWorldLocation(CameraLocation);
 
-    if (!bInputEnabled)
-    {
-        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-    }
-    else
-    {
-        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-    }
+	if (!bInputEnabled)
+	{
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	}
+	else
+	{
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+	}
 
-    GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
 void AAmMainPlayerCharacter::OnRep_PlayerState()
 {
-    Super::OnRep_PlayerState();
+	Super::OnRep_PlayerState();
 
-    if (GetPlayerState())
-    {
-        auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-        check(AMPlayerState);
+	if (GetPlayerState())
+	{
+		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+		check(AMPlayerState);
 
-        int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
-        GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
+		int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
+		GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
 
-        for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
-        {
-            GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
-        }
+		for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
+		{
+			GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+		}
 
-        FColor PlayerColor = AMPlayerState->GetPlayerColor();
-        UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
-        MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
-    }
+		FColor PlayerColor = AMPlayerState->GetPlayerColor();
+		UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+		MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
+	}
 }
 
 void AAmMainPlayerCharacter::PossessedBy(AController* NewController)
 {
-    Super::PossessedBy(NewController);
+	Super::PossessedBy(NewController);
 
 	if (GetPlayerState())
 	{
-        auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-        check(AMPlayerState);
+		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+		check(AMPlayerState);
 
-        int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
-        GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
+		int32 PlayerId = AMPlayerState->GetPlayerId() % FAmUtils::MaxPlayers;
+		GetCapsuleComponent()->SetCollisionObjectType(FAmUtils::PlayerECCs[PlayerId]);
 
-        for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
-        {
-            GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
-        }
+		for (int32 Index = 0; Index < FAmUtils::MaxPlayers; Index++)
+		{
+			GetCapsuleComponent()->SetCollisionResponseToChannel(FAmUtils::PlayerECCs[Index], ECollisionResponse::ECR_Ignore);
+		}
 
-        FColor PlayerColor = AMPlayerState->GetPlayerColor();
-        UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
-        MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
+		FColor PlayerColor = AMPlayerState->GetPlayerColor();
+		UMaterialInstanceDynamic* MaterialInstanceMesh = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+		MaterialInstanceMesh->SetVectorParameterValue(TEXT("PlayerColor"), PlayerColor);
 
-        AMPlayerState->SetActiveBombsCount(0);
+		AMPlayerState->SetActiveBombsCount(0);
 	}
 }
 
 void AAmMainPlayerCharacter::BlowUp_Implementation()
 {
-    check(HasAuthority());
+	check(HasAuthority());
 
-    if (!IsValid(this) || bInvincible)
-    {
-        return;
-    }
+	if (!IsValid(this) || bInvincible)
+	{
+		return;
+	}
 
-    if (Controller)
-    {
-        OnPlayerCharacterDeath.Broadcast(Controller);
+	if (Controller)
+	{
+		OnPlayerCharacterDeath.Broadcast(Controller);
 
-        Controller->UnPossess();
-    }
+		Controller->UnPossess();
+	}
 
-    Destroy();
+	Destroy();
 }
 
 void AAmMainPlayerCharacter::SetInputEnabled(bool InputEnabled)
 {
-    bInputEnabled = InputEnabled;
+	bInputEnabled = InputEnabled;
 }
 
 void AAmMainPlayerCharacter::SetInvincible(bool Invincible)
 {
-    bInvincible = Invincible;
+	bInvincible = Invincible;
 }
 
 void AAmMainPlayerCharacter::IncreaseMovementSpeed(float Percentage)
 {
-    MaxWalkSpeed += DefaultMaxWalkSpeed * Percentage / 100.f;
+	MaxWalkSpeed += DefaultMaxWalkSpeed * Percentage / 100.f;
 }
 
 void AAmMainPlayerCharacter::IncrementExplosionRadiusTiles()
 {
-    ExplosionRadiusTiles++;
+	ExplosionRadiusTiles++;
 }
 
 void AAmMainPlayerCharacter::IncrementActiveBombsLimit()
 {
-    ActiveBombsLimit++;
+	ActiveBombsLimit++;
 }
 
 int32 AAmMainPlayerCharacter::GetExplosionRadiusTiles() const
 {
-    return ExplosionRadiusTiles;
+	return ExplosionRadiusTiles;
 }
 
 float AAmMainPlayerCharacter::GetDefaultMaxWalkSpeed() const
 {
-    return DefaultMaxWalkSpeed;
+	return DefaultMaxWalkSpeed;
 }
 
 void AAmMainPlayerCharacter::MoveVertical(float Value)
 {
-    if (Value != 0.f)
-    {
-        AddMovementInput(FVector::YAxisVector, Value);
-    }
+	if (Value != 0.f)
+	{
+		AddMovementInput(FVector::YAxisVector, Value);
+	}
 }
 
 void AAmMainPlayerCharacter::MoveHorizontal(float Value)
 {
-    if (Value != 0.f) 
-    {
-        AddMovementInput(FVector::XAxisVector, Value);
-    }
+	if (Value != 0.f)
+	{
+		AddMovementInput(FVector::XAxisVector, Value);
+	}
 }
 
 void AAmMainPlayerCharacter::OnBombExploded()
 {
-    auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-    check(AMPlayerState);
-    if (AMPlayerState)
-    {
-        int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-        AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
-    }
+	auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+	check(AMPlayerState);
+	if (AMPlayerState)
+	{
+		int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+		AMPlayerState->SetActiveBombsCount(ActiveBombsCount - 1);
+	}
 }
 
 bool AAmMainPlayerCharacter::CanPlaceBomb()
 {
-    bool bCanPlaceBomb = true;
+	bool bCanPlaceBomb = true;
 
-    if (GetPlayerState())
-    {
-        auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-        check(AMPlayerState);
-        if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
-        {
-            bCanPlaceBomb = false;
-        }
-    }
+	if (GetPlayerState())
+	{
+		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+		check(AMPlayerState);
+		if (AMPlayerState->GetActiveBombsCount() >= ActiveBombsLimit)
+		{
+			bCanPlaceBomb = false;
+		}
+	}
 
-    TArray<FOverlapResult> OutOverlaps{};
-    FVector Location = GetActorLocation();
-    Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-    Location = FAmUtils::RoundToUnitCenter(Location);
+	TArray<FOverlapResult> OutOverlaps{};
+	FVector Location = GetActorLocation();
+	Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
+	Location = FAmUtils::RoundToUnitCenter(Location);
 
-    FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 8, FAmUtils::Unit / 8, FAmUtils::Unit));
-    GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
+	FCollisionShape CollisionShape = FCollisionShape::MakeBox(FVector(FAmUtils::Unit / 8, FAmUtils::Unit / 8, FAmUtils::Unit));
+	GetWorld()->OverlapMultiByChannel(OutOverlaps, Location, FQuat::Identity, ECollisionChannel::ECC_WorldDynamic, CollisionShape);
 
-    for (const FOverlapResult& Overlap : OutOverlaps)
-    {
-        auto* Bomb = Cast<AAmBomb>(Overlap.GetActor());
-        if (Bomb)
-        {
-            bCanPlaceBomb = false;
-        }
-    }
+	for (const FOverlapResult& Overlap : OutOverlaps)
+	{
+		auto* Bomb = Cast<AAmBomb>(Overlap.GetActor());
+		if (Bomb)
+		{
+			bCanPlaceBomb = false;
+		}
+	}
 
-    return bCanPlaceBomb;
+	return bCanPlaceBomb;
 }
 
 void AAmMainPlayerCharacter::PlaceBomb_Implementation()
 {
-    if (!bInputEnabled)
-    {
-        return;
-    }
+	if (!bInputEnabled)
+	{
+		return;
+	}
 
-    if (!CanPlaceBomb())
-    {
-        return;
-    }
+	if (!CanPlaceBomb())
+	{
+		return;
+	}
 
-    if (GetPlayerState())
-    {
-        auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
-        check(AMPlayerState);
-        int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
-        AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
-    }
+	if (GetPlayerState())
+	{
+		auto* AMPlayerState = GetPlayerState<AAmMainPlayerState>();
+		check(AMPlayerState);
+		int32 ActiveBombsCount = AMPlayerState->GetActiveBombsCount();
+		AMPlayerState->SetActiveBombsCount(ActiveBombsCount + 1);
+	}
 
-    FVector Location = GetActorLocation();
-    Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
-    Location = FAmUtils::RoundToUnitCenter(Location);
+	FVector Location = GetActorLocation();
+	Location.Z -= GetCapsuleComponent()->Bounds.BoxExtent.Z;
+	Location = FAmUtils::RoundToUnitCenter(Location);
 
-    FTransform Transform;
-    Transform.SetLocation(Location);
-    Transform.SetRotation(FQuat::Identity);
-    FActorSpawnParameters SpawnParameters;
-    AAmBomb* Bomb = GetWorld()->SpawnActorAbsolute<AAmBomb>(BombClass, Transform, SpawnParameters);
-    Bomb->SetExplosionRadiusTiles(ExplosionRadiusTiles);
-    Bomb->OnBombExploded.AddDynamic(this, &AAmMainPlayerCharacter::OnBombExploded);
+	FTransform Transform;
+	Transform.SetLocation(Location);
+	Transform.SetRotation(FQuat::Identity);
+	FActorSpawnParameters SpawnParameters;
+	AAmBomb* Bomb = GetWorld()->SpawnActorAbsolute<AAmBomb>(BombClass, Transform, SpawnParameters);
+	Bomb->SetExplosionRadiusTiles(ExplosionRadiusTiles);
+	Bomb->OnBombExploded.AddDynamic(this, &AAmMainPlayerCharacter::OnBombExploded);
 }

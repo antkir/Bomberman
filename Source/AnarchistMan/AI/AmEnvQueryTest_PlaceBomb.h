@@ -17,15 +17,15 @@ class UAmEnvQueryTest_PlaceBomb : public UEnvQueryTest
 
 public:
 
-    UAmEnvQueryTest_PlaceBomb(const FObjectInitializer& ObjectInitializer);
+	UAmEnvQueryTest_PlaceBomb(const FObjectInitializer& ObjectInitializer);
 
 public:
 
-    virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
+	virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
 
 private:
 
-    virtual FText GetDescriptionTitle() const override;
-    virtual FText GetDescriptionDetails() const override;
+	virtual FText GetDescriptionTitle() const override;
+	virtual FText GetDescriptionDetails() const override;
 	
 };

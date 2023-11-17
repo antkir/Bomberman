@@ -19,73 +19,73 @@ DECLARE_LOG_CATEGORY_EXTERN(LogGame, Log, All);
 UENUM(BlueprintType)
 enum class ETileType : uint8
 {
-    DEFAULT,
-    BLOCK,
-    BOMB,
+	DEFAULT,
+	BLOCK,
+	BOMB,
 };
 
 namespace ETileNavCost {
 enum Type : int64
 {
-    DEFAULT = 1,
-    BLOCK = 1000000,
-    BOMB = 1000000000000,
+	DEFAULT = 1,
+	BLOCK = 1000000,
+	BOMB = 1000000000000,
 };
 }
 
 struct FAmUtils
 {
-    // Tile side size.
-    static constexpr float Unit = 100.f;
+	// Tile side size.
+	static constexpr float Unit = 100.f;
 
-    // Max number of players in the game.
-    static constexpr uint8 MaxPlayers = 4;
+	// Max number of players in the game.
+	static constexpr uint8 MaxPlayers = 4;
 
-    // Custom player collision channels.
-    static constexpr ECollisionChannel PlayerECCs[MaxPlayers]
-    {
-        ECC_Pawn1,
-        ECC_Pawn2,
-        ECC_Pawn3,
-        ECC_Pawn4
-    };
+	// Custom player collision channels.
+	static constexpr ECollisionChannel PlayerECCs[MaxPlayers]
+	{
+		ECC_Pawn1,
+		ECC_Pawn2,
+		ECC_Pawn3,
+		ECC_Pawn4
+	};
 
-    // Predefined player colors.
-    static constexpr FColor PlayerColors[MaxPlayers]
-    {
-        FColor(255, 0, 0),
-        FColor(0, 255, 0),
-        FColor(0, 0, 255),
-        FColor(255, 255, 0),
-    };
+	// Predefined player colors.
+	static constexpr FColor PlayerColors[MaxPlayers]
+	{
+		FColor(255, 0, 0),
+		FColor(0, 255, 0),
+		FColor(0, 0, 255),
+		FColor(255, 255, 0),
+	};
 
-    static FORCEINLINE float RoundToUnitCenter(float Num)
-    {
-        return FMath::Floor(Num / Unit) * Unit + Unit / 2;
-    }
+	static FORCEINLINE float RoundToUnitCenter(float Num)
+	{
+		return FMath::Floor(Num / Unit) * Unit + Unit / 2;
+	}
 
-    static FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
-    {
-        Vector.X = RoundToUnitCenter(Vector.X);
-        Vector.Y = RoundToUnitCenter(Vector.Y);
-        Vector.Z = RoundToUnitCenter(Vector.Z);
-        return Vector;
-    }
+	static FORCEINLINE FVector RoundToUnitCenter(FVector Vector)
+	{
+		Vector.X = RoundToUnitCenter(Vector.X);
+		Vector.Y = RoundToUnitCenter(Vector.Y);
+		Vector.Z = RoundToUnitCenter(Vector.Z);
+		return Vector;
+	}
 
-    static FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
-    {
-        switch (ECC)
-        {
-        case ECC_Pawn1:
-            return 1 << 0;
-        case ECC_Pawn2:
-            return 1 << 1;
-        case ECC_Pawn3:
-            return 1 << 2;
-        case ECC_Pawn4:
-            return 1 << 3;
-        default:
-            return 1 << 4;
-        }
-    }
+	static FORCEINLINE uint8 GetPlayerIdFromPawnECC(ECollisionChannel ECC)
+	{
+		switch (ECC)
+		{
+		case ECC_Pawn1:
+			return 1 << 0;
+		case ECC_Pawn2:
+			return 1 << 1;
+		case ECC_Pawn3:
+			return 1 << 2;
+		case ECC_Pawn4:
+			return 1 << 3;
+		default:
+			return 1 << 4;
+		}
+	}
 };

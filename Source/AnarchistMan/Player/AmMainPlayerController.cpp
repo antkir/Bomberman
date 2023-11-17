@@ -4,66 +4,66 @@
 
 AAmMainPlayerController::AAmMainPlayerController()
 {
-    bIsGameMenuOpen = false;
+	bIsGameMenuOpen = false;
 
-    bAutoManageActiveCameraTarget = false;
+	bAutoManageActiveCameraTarget = false;
 }
 
 void AAmMainPlayerController::SetupInputComponent()
 {
-    Super::SetupInputComponent();
+	Super::SetupInputComponent();
 
-    InputComponent->BindAction("Game Menu", IE_Pressed, this, &AAmMainPlayerController::ToggleGameMenu);
+	InputComponent->BindAction("Game Menu", IE_Pressed, this, &AAmMainPlayerController::ToggleGameMenu);
 }
 
 void AAmMainPlayerController::BeginPreGame_Implementation(float Countdown)
 {
-    if (IsLocalController())
-    {
-        OnBeginPreGame(Countdown);
-    }
+	if (IsLocalController())
+	{
+		OnBeginPreGame(Countdown);
+	}
 }
 
 void AAmMainPlayerController::BeginGame_Implementation()
 {
-    if (IsLocalController())
-    {
-        OnBeginGame();
-    }
+	if (IsLocalController())
+	{
+		OnBeginGame();
+	}
 }
 
 void AAmMainPlayerController::BeginRoundOver_Implementation(const FString& PlayerName)
 {
-    if (IsLocalController())
-    {
-        if (!PlayerName.IsEmpty())
-        {
-            OnBeginRoundOver(PlayerName);
-        }
-        else
-        {
-            OnBeginRoundDraw();
-        }
-    }
+	if (IsLocalController())
+	{
+		if (!PlayerName.IsEmpty())
+		{
+			OnBeginRoundOver(PlayerName);
+		}
+		else
+		{
+			OnBeginRoundDraw();
+		}
+	}
 }
 
 void AAmMainPlayerController::BeginGameOver_Implementation(const FString& PlayerName)
 {
-    if (IsLocalController())
-    {
-        OnBeginGameOver(PlayerName);
-    }
+	if (IsLocalController())
+	{
+		OnBeginGameOver(PlayerName);
+	}
 }
 
 void AAmMainPlayerController::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    SetInputMode(FInputModeGameAndUI());
+	SetInputMode(FInputModeGameAndUI());
 }
 
 void AAmMainPlayerController::ToggleGameMenu()
 {
-    bIsGameMenuOpen = !bIsGameMenuOpen;
-    OnToggleGameMenu();
+	bIsGameMenuOpen = !bIsGameMenuOpen;
+	OnToggleGameMenu();
 }

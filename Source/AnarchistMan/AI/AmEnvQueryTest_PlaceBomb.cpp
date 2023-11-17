@@ -8,53 +8,53 @@
 
 UAmEnvQueryTest_PlaceBomb::UAmEnvQueryTest_PlaceBomb(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-    Cost = EEnvTestCost::High;
+	Cost = EEnvTestCost::High;
 
-    ValidItemType = UEnvQueryItemType_VectorBase::StaticClass();
+	ValidItemType = UEnvQueryItemType_VectorBase::StaticClass();
 
-    SetWorkOnFloatValues(false);
+	SetWorkOnFloatValues(false);
 }
 
 void UAmEnvQueryTest_PlaceBomb::RunTest(FEnvQueryInstance& QueryInstance) const
 {
-    UObject* DataOwner = QueryInstance.Owner.Get();
-    BoolValue.BindData(DataOwner, QueryInstance.QueryID);
-    bool bWantsHit = BoolValue.GetValue();
+	UObject* DataOwner = QueryInstance.Owner.Get();
+	BoolValue.BindData(DataOwner, QueryInstance.QueryID);
+	bool bWantsHit = BoolValue.GetValue();
 
-    auto* PlayerCharacter = Cast<AAmMainPlayerCharacter>(DataOwner);
+	auto* PlayerCharacter = Cast<AAmMainPlayerCharacter>(DataOwner);
 
-    FVector ActorLocation = PlayerCharacter->GetActorLocation();
-    ActorLocation = FAmUtils::RoundToUnitCenter(ActorLocation);
+	FVector ActorLocation = PlayerCharacter->GetActorLocation();
+	ActorLocation = FAmUtils::RoundToUnitCenter(ActorLocation);
 
-    uint64 ExplosionRadiusTiles = PlayerCharacter->GetExplosionRadiusTiles();
-    float MinX = ActorLocation.X - ExplosionRadiusTiles * FAmUtils::Unit - FAmUtils::Unit / 2;
-    float MaxX = ActorLocation.X + ExplosionRadiusTiles * FAmUtils::Unit + FAmUtils::Unit / 2;
-    float MinY = ActorLocation.Y - ExplosionRadiusTiles * FAmUtils::Unit - FAmUtils::Unit / 2;
-    float MaxY = ActorLocation.Y + ExplosionRadiusTiles * FAmUtils::Unit + FAmUtils::Unit / 2;
+	uint64 ExplosionRadiusTiles = PlayerCharacter->GetExplosionRadiusTiles();
+	float MinX = ActorLocation.X - ExplosionRadiusTiles * FAmUtils::Unit - FAmUtils::Unit / 2;
+	float MaxX = ActorLocation.X + ExplosionRadiusTiles * FAmUtils::Unit + FAmUtils::Unit / 2;
+	float MinY = ActorLocation.Y - ExplosionRadiusTiles * FAmUtils::Unit - FAmUtils::Unit / 2;
+	float MaxY = ActorLocation.Y + ExplosionRadiusTiles * FAmUtils::Unit + FAmUtils::Unit / 2;
 
-    FEnvQueryInstance::ItemIterator It(this, QueryInstance);
-    It.IgnoreTimeLimit();
-    for (; It; ++It)
-    {
-        bool bScore = true;
+	FEnvQueryInstance::ItemIterator It(this, QueryInstance);
+	It.IgnoreTimeLimit();
+	for (; It; ++It)
+	{
+		bool bScore = true;
 
-        FVector ItemLocation = GetItemLocation(QueryInstance, It.GetIndex());
-        if ((ItemLocation.X > MinX && ItemLocation.X < MaxX && ItemLocation.Y == ActorLocation.Y) ||
-            (ItemLocation.Y > MinY && ItemLocation.Y < MaxY && ItemLocation.X == ActorLocation.X))
-        {
-            bScore = false;
-        }
+		FVector ItemLocation = GetItemLocation(QueryInstance, It.GetIndex());
+		if ((ItemLocation.X > MinX && ItemLocation.X < MaxX && ItemLocation.Y == ActorLocation.Y) ||
+			(ItemLocation.Y > MinY && ItemLocation.Y < MaxY && ItemLocation.X == ActorLocation.X))
+		{
+			bScore = false;
+		}
 
-        It.SetScore(TestPurpose, FilterType, bScore, bWantsHit);
-    }
+		It.SetScore(TestPurpose, FilterType, bScore, bWantsHit);
+	}
 }
 
 FText UAmEnvQueryTest_PlaceBomb::GetDescriptionTitle() const
 {
-    return FText::FromString(FString::Printf(TEXT("%s"), *Super::GetDescriptionTitle().ToString()));
+	return FText::FromString(FString::Printf(TEXT("%s"), *Super::GetDescriptionTitle().ToString()));
 }
 
 FText UAmEnvQueryTest_PlaceBomb::GetDescriptionDetails() const
 {
-    return DescribeBoolTestParams("");
+	return DescribeBoolTestParams("");
 }

@@ -17,10 +17,10 @@ class UAmGameInstance : public UGameInstance
 
 public:
 
-    UAmGameInstance();
+	UAmGameInstance();
 
 public:
 
-    UPROPERTY(BlueprintReadWrite, Category = "Properties")
-    int32 ConnectedPlayersNum;
+	UPROPERTY(BlueprintReadWrite, Category = "Properties")
+	int32 ConnectedPlayersNum;
 };

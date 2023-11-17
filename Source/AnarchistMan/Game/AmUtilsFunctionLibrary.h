@@ -15,10 +15,10 @@
 UCLASS()
 class UAmUtilsFunctionLibrary : public UBlueprintFunctionLibrary
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
 
-    UFUNCTION(BlueprintCallable, Category = "Utilities")
-    static int64 GetValue(ETileType TileType);
+	UFUNCTION(BlueprintCallable, Category = "Utilities")
+	static int64 GetValue(ETileType TileType);
 };

@@ -17,11 +17,11 @@ class AAmMainGameState : public AGameStateBase
 
 public:
 
-    AAmMainGameState();
+	AAmMainGameState();
 
 public:
 
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void AddPlayerState(APlayerState* PlayerState) override;
 
@@ -29,18 +29,18 @@ public:
 
 	void PlayerDeath();
 
-    uint8 GetPlayersAlive() const;
+	uint8 GetPlayersAlive() const;
 
-    void SetPlayersAlive(uint8 Num);
+	void SetPlayersAlive(uint8 Num);
 
-    uint8 GetRoundsToWin() const;
+	uint8 GetRoundsToWin() const;
 
 protected:
 
-    UPROPERTY(Replicated, BlueprintReadOnly, EditDefaultsOnly, Category = "Properties")
-    uint8 RoundsToWin;
+	UPROPERTY(Replicated, BlueprintReadOnly, EditDefaultsOnly, Category = "Properties")
+	uint8 RoundsToWin;
 
-    UPROPERTY(BlueprintReadOnly)
-    uint8 PlayersAlive;
+	UPROPERTY(BlueprintReadOnly)
+	uint8 PlayersAlive;
 	
 };

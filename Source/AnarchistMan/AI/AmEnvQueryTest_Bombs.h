@@ -17,19 +17,19 @@ class UAmEnvQueryTest_Bombs : public UEnvQueryTest
 
 public:
 
-    UAmEnvQueryTest_Bombs(const FObjectInitializer& ObjectInitializer);
+	UAmEnvQueryTest_Bombs(const FObjectInitializer& ObjectInitializer);
 	
 public:
 
-    virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
+	virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
 
 private:
 
-    virtual FText GetDescriptionTitle() const override;
-    virtual FText GetDescriptionDetails() const override;
+	virtual FText GetDescriptionTitle() const override;
+	virtual FText GetDescriptionDetails() const override;
 
 protected:
 
-    UPROPERTY(EditDefaultsOnly, Category = "Parameters")
-    FAIDataProviderBoolValue AddMovementStartDelay;
+	UPROPERTY(EditDefaultsOnly, Category = "Parameters")
+	FAIDataProviderBoolValue AddMovementStartDelay;
 };

@@ -29,75 +29,75 @@ protected:
 
 	void PostLogin(APlayerController* NewPlayer) override;
 
-    void Destroyed() override;
+	void Destroyed() override;
 
 	void PlayerDeath(AController* Controller);
 
-    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
-    void RestartGame();
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly)
+	void RestartGame();
 
-    APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
+	APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 
-    UFUNCTION()
-    void OnPlayerCharacterDeath(AController* PlayerController);
+	UFUNCTION()
+	void OnPlayerCharacterDeath(AController* PlayerController);
 
 private:
 
-    void BeginPreGame();
+	void BeginPreGame();
 
-    void PrepareGame();
+	void PrepareGame();
 
-    void BeginGame();
+	void BeginGame();
 
 	void BeginRoundOver(FString PlayerName);
 
 	void BeginGameOver(FString PlayerName);
 
-    void SpawnAIControllers();
+	void SpawnAIControllers();
 
-    void SetControllerName(AController* Controller);
+	void SetControllerName(AController* Controller);
 
-    void SetControllerColor(AController* Controller);
+	void SetControllerColor(AController* Controller);
 
-    AActor* GetNextViewTarget() const;
+	AActor* GetNextViewTarget() const;
 
-    virtual bool ShouldSpawnAtStartSpot(AController* Player) override;
+	virtual bool ShouldSpawnAtStartSpot(AController* Player) override;
 
-    ACameraActor* GetLevelOverviewCamera() const;
+	ACameraActor* GetLevelOverviewCamera() const;
 
-    FORCEINLINE FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime) const
-    {
-        FViewTargetTransitionParams TransitionParams;
-        TransitionParams.BlendTime = BlendTime;
-        TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
-        TransitionParams.BlendExp = 0;
-        TransitionParams.bLockOutgoing = true;
-        return TransitionParams;
-    }
+	FORCEINLINE FViewTargetTransitionParams CreateViewTargetTransitionParams(float BlendTime) const
+	{
+		FViewTargetTransitionParams TransitionParams;
+		TransitionParams.BlendTime = BlendTime;
+		TransitionParams.BlendFunction = EViewTargetBlendFunction::VTBlend_Cubic;
+		TransitionParams.BlendExp = 0;
+		TransitionParams.bLockOutgoing = true;
+		return TransitionParams;
+	}
 
 protected:
 
-    UPROPERTY(BlueprintReadOnly)
-    FName CurrentMatchState;
+	UPROPERTY(BlueprintReadOnly)
+	FName CurrentMatchState;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    float RoundCountdownTime;
+	UPROPERTY(EditDefaultsOnly, Category = "Properties")
+	float RoundCountdownTime;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    float CameraBlendTime;
+	UPROPERTY(EditDefaultsOnly, Category = "Properties")
+	float CameraBlendTime;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    float RoundDrawTimeThreshold;
+	UPROPERTY(EditDefaultsOnly, Category = "Properties")
+	float RoundDrawTimeThreshold;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Properties")
-    bool bResetLevelOnBeginPreGame;
+	UPROPERTY(EditDefaultsOnly, Category = "Properties")
+	bool bResetLevelOnBeginPreGame;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Classes")
-    TSubclassOf<AAIController> AIControllerClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Classes")
+	TSubclassOf<AAIController> AIControllerClass;
 
-    UPROPERTY(BlueprintReadOnly)
-    int32 RecentDeaths;
+	UPROPERTY(BlueprintReadOnly)
+	int32 RecentDeaths;
 
-    FTimerHandle BeginPreGameTimerHandle;
+	FTimerHandle BeginPreGameTimerHandle;
 	
 };

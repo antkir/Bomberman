@@ -21,96 +21,96 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPlayerCharacterDeath, AController*,
 UCLASS()
 class AAmMainPlayerCharacter : public ACharacter, public IAmExplosiveInterface
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
 
-    // Sets default values for this character's properties
-    AAmMainPlayerCharacter();
+	// Sets default values for this character's properties
+	AAmMainPlayerCharacter();
 
 public:
 
-    // Called to bind functionality to input
-    void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	// Called to bind functionality to input
+	void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    bool IsBlockingExplosion_Implementation() override;
+	bool IsBlockingExplosion_Implementation() override;
 
-    void BlowUp_Implementation() override;
+	void BlowUp_Implementation() override;
 
-    void SetInputEnabled(bool InputEnabled);
+	void SetInputEnabled(bool InputEnabled);
 
-    void SetInvincible(bool Invincible);
+	void SetInvincible(bool Invincible);
 
-    UFUNCTION(BlueprintCallable)
-    void IncreaseMovementSpeed(float Percentage);
+	UFUNCTION(BlueprintCallable)
+	void IncreaseMovementSpeed(float Percentage);
 
-    UFUNCTION(BlueprintCallable)
-    void IncrementExplosionRadiusTiles();
+	UFUNCTION(BlueprintCallable)
+	void IncrementExplosionRadiusTiles();
 
-    UFUNCTION(BlueprintCallable)
-    void IncrementActiveBombsLimit();
+	UFUNCTION(BlueprintCallable)
+	void IncrementActiveBombsLimit();
 
-    int32 GetExplosionRadiusTiles() const;
+	int32 GetExplosionRadiusTiles() const;
 
-    float GetDefaultMaxWalkSpeed() const;
+	float GetDefaultMaxWalkSpeed() const;
 
 protected:
 
-    void BeginPlay() override;
+	void BeginPlay() override;
 
-    void Tick(float DeltaTime) override;
+	void Tick(float DeltaTime) override;
 
-    void OnRep_PlayerState() override;
+	void OnRep_PlayerState() override;
 
-    void PossessedBy(AController* NewController) override;
+	void PossessedBy(AController* NewController) override;
 
-    UFUNCTION(Server, Reliable, BlueprintCallable)
-    void PlaceBomb();
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void PlaceBomb();
 
 private:
 
-    void MoveVertical(float Val);
+	void MoveVertical(float Val);
 
-    void MoveHorizontal(float Val);
+	void MoveHorizontal(float Val);
 
-    UFUNCTION()
-    void OnBombExploded();
+	UFUNCTION()
+	void OnBombExploded();
 
-    bool CanPlaceBomb();
+	bool CanPlaceBomb();
 
 public:
 
-    UPROPERTY(BlueprintAssignable)
-    FPlayerCharacterDeath OnPlayerCharacterDeath;
+	UPROPERTY(BlueprintAssignable)
+	FPlayerCharacterDeath OnPlayerCharacterDeath;
 
 protected:
 
-    UPROPERTY(VisibleAnywhere, Category = "Components")
-    UCameraComponent* CameraComponent;
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UCameraComponent* CameraComponent;
 
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<AAmBomb> BombClass;
+	UPROPERTY(EditAnywhere, Category = "Classes")
+	TSubclassOf<AAmBomb> BombClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters")
-    FVector CameraLocationOffset;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters")
+	FVector CameraLocationOffset;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
-    int32 ExplosionRadiusTiles;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
+	int32 ExplosionRadiusTiles;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
-    int32 ActiveBombsLimit;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parameters", meta = (ClampMin = "0"))
+	int32 ActiveBombsLimit;
 
-    UPROPERTY(Replicated, BlueprintReadOnly)
-    bool bInputEnabled;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bInputEnabled;
 
-    UPROPERTY(Replicated, EditInstanceOnly, BlueprintReadOnly)
-    bool bInvincible;
+	UPROPERTY(Replicated, EditInstanceOnly, BlueprintReadOnly)
+	bool bInvincible;
 
-    UPROPERTY(Transient, Replicated, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-    float MaxWalkSpeed;
+	UPROPERTY(Transient, Replicated, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float MaxWalkSpeed;
 
-    UPROPERTY(BlueprintReadOnly)
-    float DefaultMaxWalkSpeed;
+	UPROPERTY(BlueprintReadOnly)
+	float DefaultMaxWalkSpeed;
 };
